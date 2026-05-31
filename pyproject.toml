@@ -1,0 +1,18 @@
+[project]
+name = "keiba-data-platform"
+version = "0.1.0"
+description = "Local PostgreSQL data platform for JRA-VAN based keiba AI projects."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "pandas",
+    "psycopg2-binary",
+    "pyarrow",
+    "python-dotenv",
+    "pyyaml",
+    "sqlalchemy",
+]
+
+[tool.uv]
+package = false

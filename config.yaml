@@ -1,0 +1,9 @@
+raw_data_dir: data/raw
+temp_data_dir: temp
+
+tables:
+  raw_races: raw_races
+  raw_entries: raw_entries
+  raw_results: raw_results
+  raw_payouts: raw_payouts
+  raw_odds: raw_odds

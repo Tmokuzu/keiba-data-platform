@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+logs/*.log
+logs/data_quality_report.json
