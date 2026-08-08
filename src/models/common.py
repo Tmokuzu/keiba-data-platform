@@ -4,7 +4,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import joblib
 import numpy as np
@@ -66,12 +66,55 @@ def load_config() -> dict[str, Any]:
     config["modeling"].setdefault("valid_size", 0.2)
     config["modeling"].setdefault("test_size", 0.2)
     config["modeling"].setdefault("min_train_rows", 50)
+    config["modeling"].setdefault("accelerator", "auto")
+    config["modeling"].setdefault("gpu_devices", "0")
     config.setdefault("ensemble", {})
     config["ensemble"].setdefault("method", "simple_average")
     config["ensemble"].setdefault("weights", {"lgbm": 0.34, "catboost": 0.33, "xgboost": 0.33})
     config.setdefault("safe_agent", {})
     config["safe_agent"].setdefault("max_model_uncertainty", 0.10)
     return config
+
+
+def accelerator_mode(config: dict[str, Any]) -> str:
+    """Return the requested learning accelerator: auto, cpu, or gpu."""
+    mode = str(config["modeling"].get("accelerator", "auto")).lower()
+    if mode not in {"auto", "cpu", "gpu"}:
+        raise ValueError("modeling.accelerator must be one of: auto, cpu, gpu")
+    return mode
+
+
+def fit_with_accelerator_fallback(
+    model_name: str,
+    config: dict[str, Any],
+    make_gpu_model: Callable[[], Any],
+    make_cpu_model: Callable[[], Any],
+    fit_model: Callable[[Any], None],
+) -> tuple[Any, str]:
+    """Fit on GPU when requested, with an automatic safe CPU fallback.
+
+    ``accelerator: gpu`` is strict and reports a configuration error.  The
+    default ``auto`` mode retries on CPU for hosts without a compatible GPU
+    build, CUDA driver, or device.
+    """
+    mode = accelerator_mode(config)
+    if mode == "cpu":
+        model = make_cpu_model()
+        fit_model(model)
+        return model, "cpu"
+
+    try:
+        model = make_gpu_model()
+        fit_model(model)
+        logger.info("Trained %s on GPU.", model_name)
+        return model, "gpu"
+    except Exception as exc:
+        if mode == "gpu":
+            raise RuntimeError(f"{model_name} GPU training failed; check GPU runtime and driver settings.") from exc
+        logger.warning("%s GPU training is unavailable; retrying on CPU: %s", model_name, exc)
+        model = make_cpu_model()
+        fit_model(model)
+        return model, "cpu"
 
 
 def ensure_dirs() -> None:

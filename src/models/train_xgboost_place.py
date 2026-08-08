@@ -12,6 +12,7 @@ from src.models.common import (
     binary_metrics,
     ensure_dirs,
     fit_isotonic_calibrator,
+    fit_with_accelerator_fallback,
     load_ai_race_entries,
     load_config,
     make_feature_spec,
@@ -52,24 +53,30 @@ def train_xgboost_place(
     x_test = preprocessor.transform(split.test[spec.feature_cols])
     y_train = split.train[TARGET_COL].astype(int)
 
-    model = XGBClassifier(
-        n_estimators=300,
-        learning_rate=0.04,
-        max_depth=4,
-        subsample=0.9,
-        colsample_bytree=0.9,
-        objective="binary:logistic",
-        eval_metric="logloss",
-        random_state=int(config["modeling"]["random_state"]),
-        n_jobs=1,
+    common_params = {
+        "n_estimators": 300,
+        "learning_rate": 0.04,
+        "max_depth": 4,
+        "subsample": 0.9,
+        "colsample_bytree": 0.9,
+        "objective": "binary:logistic",
+        "eval_metric": "logloss",
+        "random_state": int(config["modeling"]["random_state"]),
+        "n_jobs": 1,
+    }
+    model, training_device = fit_with_accelerator_fallback(
+        "XGBoost",
+        config,
+        lambda: XGBClassifier(**common_params, tree_method="hist", device=f"cuda:{config['modeling'].get('gpu_devices', '0').split(',')[0]}"),
+        lambda: XGBClassifier(**common_params, tree_method="hist", device="cpu"),
+        lambda candidate: candidate.fit(x_train, y_train),
     )
-    model.fit(x_train, y_train)
     valid_probs = model.predict_proba(x_valid)[:, 1]
     calibrator = fit_isotonic_calibrator(valid_probs, split.valid[TARGET_COL].astype(int))
     test_raw = model.predict_proba(x_test)[:, 1]
     test_probs = np.clip(test_raw if calibrator is None else calibrator.predict(test_raw), 0.0, 1.0)
     metrics = binary_metrics(split.test[TARGET_COL], test_probs)
-    metrics.update({"model_type": "xgboost", "train_rows": len(split.train), "valid_rows": len(split.valid), "test_rows": len(split.test)})
+    metrics.update({"model_type": "xgboost", "training_device": training_device, "train_rows": len(split.train), "valid_rows": len(split.valid), "test_rows": len(split.test)})
 
     artifact = {
         "model_type": "xgboost",

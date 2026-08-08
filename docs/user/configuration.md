@@ -40,6 +40,8 @@ modeling:
   random_state: 42
   valid_size: 0.2
   test_size: 0.2
+  accelerator: auto
+  gpu_devices: "0"
   calibration:
     method: isotonic
     fit_split: valid
@@ -51,6 +53,16 @@ modeling:
 学習特徴量には、直近3/5走の成績、休養日数、競馬場・芝ダ・馬場・距離帯ごとの過去成績、
 レース内で正規化した市場評価が含まれます。特徴量の変更後は既存モデルを使わず、
 `train-all-models` を実行して再学習してください。
+
+### GPU学習
+
+`accelerator` は `auto`（既定）、`cpu`、`gpu` を指定できます。`auto` はCatBoost・XGBoost・
+LightGBMをGPUで試し、対応ビルド・CUDAドライバー・GPUが使えない場合はCPUで再実行します。
+`gpu` はGPUが必須の実行で、失敗時はエラーにします。`gpu_devices` は通常 `"0"` です。
+
+GPUが速くするのは主にモデル学習です。pandasによる履歴特徴量生成と少数頭の当日推論はCPUで
+実行されます。学習完了後は各 `models/*_place_metrics.json` の `training_device` で実際に
+GPU/CPUのどちらが使われたかを確認できます。
 
 ## アンサンブル
 

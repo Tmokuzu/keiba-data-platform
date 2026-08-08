@@ -12,6 +12,7 @@ from src.models.common import (
     binary_metrics,
     ensure_dirs,
     fit_isotonic_calibrator,
+    fit_with_accelerator_fallback,
     load_ai_race_entries,
     load_config,
     make_feature_spec,
@@ -50,23 +51,35 @@ def train_catboost_place(
     test_x = _catboost_frame(split.test, spec.feature_cols, spec.categorical_cols)
     cat_indices = [spec.feature_cols.index(col) for col in spec.categorical_cols]
 
-    model = CatBoostClassifier(
-        iterations=300,
-        learning_rate=0.04,
-        depth=6,
-        loss_function="Logloss",
-        eval_metric="AUC",
-        random_seed=int(config["modeling"]["random_state"]),
-        verbose=False,
-        allow_writing_files=False,
+    common_params = {
+        "iterations": 300,
+        "learning_rate": 0.04,
+        "depth": 6,
+        "loss_function": "Logloss",
+        "eval_metric": "AUC",
+        "random_seed": int(config["modeling"]["random_state"]),
+        "verbose": False,
+        "allow_writing_files": False,
+    }
+    fit = lambda candidate: candidate.fit(
+        train_x,
+        split.train[TARGET_COL].astype(int),
+        cat_features=cat_indices,
+        eval_set=(valid_x, split.valid[TARGET_COL].astype(int)),
     )
-    model.fit(train_x, split.train[TARGET_COL].astype(int), cat_features=cat_indices, eval_set=(valid_x, split.valid[TARGET_COL].astype(int)))
+    model, training_device = fit_with_accelerator_fallback(
+        "CatBoost",
+        config,
+        lambda: CatBoostClassifier(**common_params, task_type="GPU", devices=str(config["modeling"].get("gpu_devices", "0"))),
+        lambda: CatBoostClassifier(**common_params, task_type="CPU"),
+        fit,
+    )
     valid_probs = model.predict_proba(valid_x)[:, 1]
     calibrator = fit_isotonic_calibrator(valid_probs, split.valid[TARGET_COL].astype(int))
     test_raw = model.predict_proba(test_x)[:, 1]
     test_probs = np.clip(test_raw if calibrator is None else calibrator.predict(test_raw), 0.0, 1.0)
     metrics = binary_metrics(split.test[TARGET_COL], test_probs)
-    metrics.update({"model_type": "catboost", "train_rows": len(split.train), "valid_rows": len(split.valid), "test_rows": len(split.test)})
+    metrics.update({"model_type": "catboost", "training_device": training_device, "train_rows": len(split.train), "valid_rows": len(split.valid), "test_rows": len(split.test)})
 
     artifact = {
         "model_type": "catboost",
