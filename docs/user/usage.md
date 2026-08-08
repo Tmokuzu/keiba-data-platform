@@ -52,8 +52,9 @@ uv run python main.py build-ai-views
 uv run python main.py validate
 ```
 
-`import-csv` はraw層に保存します。`sync-ended` がcore層に送るのは、結果と払戻がそろった
-確定レースだけです。当日の出走表・オッズをraw層に置いても、core層や学習データには入りません。
+`import-csv` はraw層に保存します。`sync-ended` がcore層に送るのは、全出走馬に対応する結果と
+払戻がそろった確定レースだけです。当日の出走表・オッズをraw層に置いても、core層や学習データには
+入りません。
 
 ## 2. モデルを学習する
 
@@ -86,6 +87,10 @@ uv run python main.py check-odds-snapshots --date 2026-06-06
 
 出力の `ready: true` は、発走時刻の設定分前までの複勝オッズが出走馬の95%以上にあることを示します。
 この確認はraw層だけを読むため、当日データをcore層へ保存しません。
+
+JV-Linkを使う場合も同じです。過去データの `import-setup` / `import-diff` は市場オッズを保存せず、
+レース前の `import-rt-odds` だけが時刻付きオッズをraw層へ保存します。これにより、過去レースの
+最終オッズを締切前オッズとして誤用することを防ぎます。
 
 ### 3-2. 当日CSVから予測する
 

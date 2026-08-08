@@ -69,7 +69,8 @@ public static class Program
 
                 await using var repository = new PostgresRepository(
                     settings.Postgres.ConnectionString,
-                    loggerFactory.CreateLogger<PostgresRepository>());
+                    loggerFactory.CreateLogger<PostgresRepository>(),
+                    captureMarketOdds: false);
                 var parser = new JvRecordParser(loggerFactory.CreateLogger<JvRecordParser>());
                 using var client = new JvLinkClient(
                     settings.JvLink,
@@ -133,7 +134,8 @@ public static class Program
 
                 await using var repository = new PostgresRepository(
                     settings.Postgres.ConnectionString,
-                    loggerFactory.CreateLogger<PostgresRepository>());
+                    loggerFactory.CreateLogger<PostgresRepository>(),
+                    captureMarketOdds: true);
                 var raceIds = await repository.LoadRaceIdsByDateAsync(date);
                 if (raceIds.Count == 0)
                 {

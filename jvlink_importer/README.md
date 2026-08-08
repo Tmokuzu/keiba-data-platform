@@ -59,6 +59,10 @@ dotnet run -- import-rt-odds --date 2026-05-31 --progress-every 1
 
 `import-rt-odds`は当日レースIDごとにリアルタイム系データを取得し、`O1`から読めた単勝・複勝オッズを`raw_odds`へ保存します。`snapshot_time`は取込実行時刻です。レース前に何度か実行することで、Python側の`check-odds-snapshots`が発走前オッズのカバレッジを確認できます。
 
+`import-setup` と `import-diff` は過去データの市場オッズを保存しません。過去に取得した`O1`は
+当時の締切前オッズではないため、学習・バックテストへの将来情報混入を避けるためです。市場オッズを
+保存するのは、レース前に実行する `import-rt-odds` だけです。
+
 最初は`--max-read`を小さめにして、PostgreSQLへ入る件数と中身を確認してください。
 問題なければ`--max-read`を外すと、JV-Linkが返す対象データを最後まで読み込みます。
 `--progress-every`は何レコードごとに進捗ログを出すかを指定します。
@@ -118,8 +122,8 @@ JV-Linkから返るデータはレコード種別ごとの固定長文字列で�
 - `HR` 払戻 -> `raw_payouts`
 - `O1` 単勝・複勝オッズ -> `raw_entries` / `raw_odds`
 
-取込後はプロジェクトルートで次を実行します。`sync-ended` が結果と払戻のそろったレースだけを
-core層へ送り、未確定の当日データはraw層に残します。
+取込後はプロジェクトルートで次を実行します。`sync-ended` が全出走馬に対応する結果と払戻のそろった
+レースだけをcore層へ送り、未確定または部分取込の当日データはraw層に残します。
 
 ```bash
 uv run python main.py sync-ended

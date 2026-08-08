@@ -8,10 +8,15 @@ public sealed class PostgresRepository : IAsyncDisposable
 {
     private readonly NpgsqlDataSource _dataSource;
     private readonly ILogger<PostgresRepository> _logger;
+    private readonly bool _captureMarketOdds;
 
-    public PostgresRepository(string connectionString, ILogger<PostgresRepository> logger)
+    public PostgresRepository(
+        string connectionString,
+        ILogger<PostgresRepository> logger,
+        bool captureMarketOdds)
     {
         _logger = logger;
+        _captureMarketOdds = captureMarketOdds;
         _dataSource = NpgsqlDataSource.Create(connectionString);
     }
 
@@ -80,7 +85,8 @@ public sealed class PostgresRepository : IAsyncDisposable
                 sex_condition = EXCLUDED.sex_condition,
                 field_size = EXCLUDED.field_size,
                 start_time = EXCLUDED.start_time,
-                source = EXCLUDED.source
+                source = EXCLUDED.source,
+                imported_at = CURRENT_TIMESTAMP
             """;
         await using var command = _dataSource.CreateCommand(sql);
         Add(command, "race_id", record.RaceId);
@@ -134,7 +140,8 @@ public sealed class PostgresRepository : IAsyncDisposable
                 odds_place_min = COALESCE(EXCLUDED.odds_place_min, raw_entries.odds_place_min),
                 odds_place_max = COALESCE(EXCLUDED.odds_place_max, raw_entries.odds_place_max),
                 popularity = COALESCE(EXCLUDED.popularity, raw_entries.popularity),
-                source = EXCLUDED.source
+                source = EXCLUDED.source,
+                imported_at = CURRENT_TIMESTAMP
             """;
         await using var command = _dataSource.CreateCommand(sql);
         AddEntryParameters(command, record);
@@ -157,7 +164,8 @@ public sealed class PostgresRepository : IAsyncDisposable
                 margin = EXCLUDED.margin,
                 corner_order = EXCLUDED.corner_order,
                 last_3f = EXCLUDED.last_3f,
-                source = EXCLUDED.source
+                source = EXCLUDED.source,
+                imported_at = CURRENT_TIMESTAMP
             """;
         await using var command = _dataSource.CreateCommand(sql);
         Add(command, "race_id", record.RaceId);
@@ -177,7 +185,8 @@ public sealed class PostgresRepository : IAsyncDisposable
             VALUES (@race_id, @ticket_type, @combination, @payout, 'jvlink')
             ON CONFLICT (race_id, ticket_type, combination) DO UPDATE SET
                 payout = EXCLUDED.payout,
-                source = EXCLUDED.source
+                source = EXCLUDED.source,
+                imported_at = CURRENT_TIMESTAMP
             """;
         await using var command = _dataSource.CreateCommand(sql);
         Add(command, "race_id", record.RaceId);
@@ -189,13 +198,20 @@ public sealed class PostgresRepository : IAsyncDisposable
 
     private async Task UpsertOddsAsync(OddsRecord record)
     {
+        // Historical O1 data is retrieved after the race and is not a valid
+        // pre-start market observation. Only the realtime command may persist it.
+        if (!_captureMarketOdds)
+        {
+            return;
+        }
         var snapshotTime = DateTime.Now;
         const string sql = """
             UPDATE raw_entries SET
                 odds_win = COALESCE(@odds_win, odds_win),
                 odds_place_min = COALESCE(@odds_place_min, odds_place_min),
                 odds_place_max = COALESCE(@odds_place_max, odds_place_max),
-                popularity = COALESCE(@popularity, popularity)
+                popularity = COALESCE(@popularity, popularity),
+                imported_at = CURRENT_TIMESTAMP
             WHERE race_id = @race_id
               AND horse_no = @horse_no
             """;
@@ -243,7 +259,8 @@ public sealed class PostgresRepository : IAsyncDisposable
             )
             ON CONFLICT (race_id, snapshot_time, ticket_type, combination) DO UPDATE SET
                 odds = EXCLUDED.odds,
-                source = EXCLUDED.source
+                source = EXCLUDED.source,
+                imported_at = CURRENT_TIMESTAMP
             """;
         await using var command = _dataSource.CreateCommand(sql);
         Add(command, "race_id", raceId);
@@ -254,7 +271,7 @@ public sealed class PostgresRepository : IAsyncDisposable
         await ExecuteAsync(command);
     }
 
-    private static void AddEntryParameters(NpgsqlCommand command, EntryRecord record)
+    private void AddEntryParameters(NpgsqlCommand command, EntryRecord record)
     {
         Add(command, "race_id", record.RaceId);
         Add(command, "horse_id", record.HorseId);
@@ -270,10 +287,10 @@ public sealed class PostgresRepository : IAsyncDisposable
         Add(command, "weight_carried", record.WeightCarried);
         Add(command, "body_weight", record.BodyWeight);
         Add(command, "body_weight_diff", record.BodyWeightDiff);
-        Add(command, "odds_win", record.OddsWin);
-        Add(command, "odds_place_min", record.OddsPlaceMin);
-        Add(command, "odds_place_max", record.OddsPlaceMax);
-        Add(command, "popularity", record.Popularity);
+        Add(command, "odds_win", _captureMarketOdds ? record.OddsWin : null);
+        Add(command, "odds_place_min", _captureMarketOdds ? record.OddsPlaceMin : null);
+        Add(command, "odds_place_max", _captureMarketOdds ? record.OddsPlaceMax : null);
+        Add(command, "popularity", _captureMarketOdds ? record.Popularity : null);
     }
 
     private async Task ExecuteAsync(NpgsqlCommand command)

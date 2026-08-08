@@ -20,8 +20,26 @@ WITH ended_races AS (
       AND rr.race_no IS NOT NULL
       AND EXISTS (
           SELECT 1
+          FROM raw_entries entry
+          WHERE entry.race_id = rr.race_id
+            AND entry.horse_id IS NOT NULL
+      )
+      AND EXISTS (
+          SELECT 1
           FROM raw_results res
           WHERE res.race_id = rr.race_id
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM raw_entries entry
+          WHERE entry.race_id = rr.race_id
+            AND entry.horse_id IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM raw_results res
+                WHERE res.race_id = entry.race_id
+                  AND res.horse_id = entry.horse_id
+            )
       )
       AND EXISTS (
           SELECT 1
@@ -67,8 +85,26 @@ WITH ended_races AS (
       AND rr.race_no IS NOT NULL
       AND EXISTS (
           SELECT 1
+          FROM raw_entries entry
+          WHERE entry.race_id = rr.race_id
+            AND entry.horse_id IS NOT NULL
+      )
+      AND EXISTS (
+          SELECT 1
           FROM raw_results res
           WHERE res.race_id = rr.race_id
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM raw_entries entry
+          WHERE entry.race_id = rr.race_id
+            AND entry.horse_id IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM raw_results res
+                WHERE res.race_id = entry.race_id
+                  AND res.horse_id = entry.horse_id
+            )
       )
       AND EXISTS (
           SELECT 1
@@ -116,8 +152,26 @@ WITH ended_races AS (
       AND rr.race_no IS NOT NULL
       AND EXISTS (
           SELECT 1
+          FROM raw_entries entry
+          WHERE entry.race_id = rr.race_id
+            AND entry.horse_id IS NOT NULL
+      )
+      AND EXISTS (
+          SELECT 1
           FROM raw_results res
           WHERE res.race_id = rr.race_id
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM raw_entries entry
+          WHERE entry.race_id = rr.race_id
+            AND entry.horse_id IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM raw_results res
+                WHERE res.race_id = entry.race_id
+                  AND res.horse_id = entry.horse_id
+            )
       )
       AND EXISTS (
           SELECT 1
@@ -150,8 +204,26 @@ WITH ended_races AS (
       AND rr.race_no IS NOT NULL
       AND EXISTS (
           SELECT 1
+          FROM raw_entries entry
+          WHERE entry.race_id = rr.race_id
+            AND entry.horse_id IS NOT NULL
+      )
+      AND EXISTS (
+          SELECT 1
           FROM raw_results res
           WHERE res.race_id = rr.race_id
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM raw_entries entry
+          WHERE entry.race_id = rr.race_id
+            AND entry.horse_id IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM raw_results res
+                WHERE res.race_id = entry.race_id
+                  AND res.horse_id = entry.horse_id
+            )
       )
       AND EXISTS (
           SELECT 1
@@ -177,8 +249,26 @@ WITH ended_races AS (
       AND rr.race_no IS NOT NULL
       AND EXISTS (
           SELECT 1
+          FROM raw_entries entry
+          WHERE entry.race_id = rr.race_id
+            AND entry.horse_id IS NOT NULL
+      )
+      AND EXISTS (
+          SELECT 1
           FROM raw_results res
           WHERE res.race_id = rr.race_id
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM raw_entries entry
+          WHERE entry.race_id = rr.race_id
+            AND entry.horse_id IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM raw_results res
+                WHERE res.race_id = entry.race_id
+                  AND res.horse_id = entry.horse_id
+            )
       )
       AND EXISTS (
           SELECT 1
