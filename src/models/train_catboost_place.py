@@ -44,7 +44,9 @@ def train_catboost_place(
     raw = load_ai_race_entries() if frame is None else frame
     data = prepare_model_frame(raw, excluded_feature_groups)
     split = split_override or split_by_time(data, config["modeling"]["valid_size"], config["modeling"]["test_size"])
-    spec = make_feature_spec(split.train)
+    # CatBoost handles horse IDs natively as categorical values; do not turn
+    # them into the very large one-hot representation used by other models.
+    spec = make_feature_spec(split.train, include_high_cardinality_ids=True)
 
     train_x = _catboost_frame(split.train, spec.feature_cols, spec.categorical_cols)
     valid_x = _catboost_frame(split.valid, spec.feature_cols, spec.categorical_cols)

@@ -3,7 +3,7 @@ import unittest
 
 import pandas as pd
 
-from src.models.common import place_target, prepare_model_frame, prepare_prediction_frame
+from src.models.common import make_feature_spec, place_target, prepare_model_frame, prepare_prediction_frame
 
 
 class PlaceTargetTests(unittest.TestCase):
@@ -122,3 +122,14 @@ class PlaceTargetTests(unittest.TestCase):
         self.assertAlmostEqual(outsider["market_place_prob_normalized"], 1 / 3)
         self.assertEqual(favorite["market_place_rank"], 1.0)
         self.assertEqual(outsider["market_place_rank"], 2.0)
+
+    def test_horse_id_is_not_one_hot_encoded_for_tree_preprocessors(self) -> None:
+        frame = pd.DataFrame(
+            [{"horse_id": "horse-a", "jockey_id": "jockey-a", "target_place": 1, "feature": 1.0}]
+        )
+
+        standard = make_feature_spec(frame)
+        catboost = make_feature_spec(frame, include_high_cardinality_ids=True)
+
+        self.assertNotIn("horse_id", standard.feature_cols)
+        self.assertIn("horse_id", catboost.feature_cols)

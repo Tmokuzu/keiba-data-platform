@@ -294,7 +294,7 @@ def _prior_rolling_mean(values: pd.Series, group: pd.Series, window: int) -> pd.
     )
 
 
-def make_feature_spec(frame: pd.DataFrame) -> FeatureSpec:
+def make_feature_spec(frame: pd.DataFrame, include_high_cardinality_ids: bool = False) -> FeatureSpec:
     excluded = {
         TARGET_COL,
         "finish_position",
@@ -309,6 +309,11 @@ def make_feature_spec(frame: pd.DataFrame) -> FeatureSpec:
         "source",
     }
     id_cols = ["race_id", "horse_name", "jockey_name", "trainer_name"]
+    if not include_high_cardinality_ids:
+        # One-hot encoding every horse creates tens of thousands of columns and
+        # is both memory-prohibitive and a poor generalization feature. CatBoost
+        # can opt in to its native categorical treatment instead.
+        id_cols.append("horse_id")
     excluded.update(id_cols)
     ablations = set(frame.attrs.get("excluded_feature_groups", []))
     if "no_odds" in ablations:
@@ -392,13 +397,14 @@ def make_preprocessor(spec: FeatureSpec) -> ColumnTransformer:
                 Pipeline(
                     steps=[
                         ("imputer", SimpleImputer(strategy="constant", fill_value="missing", keep_empty_features=True)),
-                        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+                        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=True, dtype=np.float32)),
                     ]
                 ),
                 spec.categorical_cols,
             ),
         ],
         remainder="drop",
+        sparse_threshold=1.0,
         verbose_feature_names_out=False,
     )
 
