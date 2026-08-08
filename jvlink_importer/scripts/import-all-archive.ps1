@@ -1,7 +1,8 @@
 param(
     [string]$From = "19990601000000",
     [int]$ProgressEvery = 1000,
-    [switch]$SkipRace
+    [switch]$SkipRace,
+    [switch]$SkipScan
 )
 
 $ErrorActionPreference = "Continue"
@@ -14,11 +15,13 @@ Write-Host "JV-Link archive import starts from $From"
 Write-Host "All received records are preserved in raw_jv_records, including unsupported types."
 
 foreach ($spec in $specs) {
-    Write-Host "`n=== ${spec}: record-type scan ==="
-    dotnet run -- scan-types-setup --from $From --data-spec $spec --max-read 100000
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "$spec scan failed or is unavailable for this contract; continuing."
-        continue
+    if (-not $SkipScan) {
+        Write-Host "`n=== ${spec}: record-type scan ==="
+        dotnet run -- scan-types-setup --from $From --data-spec $spec --max-read 100000
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "$spec scan failed or is unavailable for this contract; continuing."
+            continue
+        }
     }
 
     Write-Host "=== ${spec}: archive import ==="

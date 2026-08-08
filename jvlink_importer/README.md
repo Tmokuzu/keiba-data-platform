@@ -99,6 +99,8 @@ cd jvlink_importer
 .\scripts\import-all-archive.ps1
 # RACEを飛ばして追加種別だけ取得する場合
 .\scripts\import-all-archive.ps1 -SkipRace
+# 事前スキャンを省略して、取込の進捗ログをすぐ表示する場合
+.\scripts\import-all-archive.ps1 -SkipScan
 ```
 
 JRA-VANの契約・提供期間により取得可能範囲は異なります。特に時系列オッズは、実際にレース前に
