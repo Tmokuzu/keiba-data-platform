@@ -1,4 +1,7 @@
-CREATE OR REPLACE VIEW ai_race_entries AS
+DROP VIEW IF EXISTS ai_horse_history;
+DROP VIEW IF EXISTS ai_race_entries;
+
+CREATE VIEW ai_race_entries AS
 SELECT
     r.race_id,
     r.race_date,
@@ -69,7 +72,7 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) place_payout ON TRUE;
 
-CREATE OR REPLACE VIEW ai_horse_history AS
+CREATE VIEW ai_horse_history AS
 SELECT
     race_id,
     race_date,

@@ -37,6 +37,18 @@ def build_parser() -> argparse.ArgumentParser:
         "build-ai-views",
         "validate",
         "run-all",
+        "train-place-model",
+        "train-catboost-place",
+        "train-xgboost-place",
+        "train-all-models",
+        "predict",
+        "predict-ensemble",
+        "safe-agent",
+        "backtest-safe-agent",
+        "model-compare",
+        "walk-forward-backtest",
+        "ablation-test",
+        "phase2-report",
     ]
 
     for name in commands:
@@ -79,6 +91,54 @@ def main() -> None:
         run_data_quality_checks()
     elif args.command == "run-all":
         run_all()
+    elif args.command == "train-place-model":
+        from src.models.train_place_model import train_lightgbm_place
+
+        train_lightgbm_place()
+    elif args.command == "train-catboost-place":
+        from src.models.train_catboost_place import train_catboost_place
+
+        train_catboost_place()
+    elif args.command == "train-xgboost-place":
+        from src.models.train_xgboost_place import train_xgboost_place
+
+        train_xgboost_place()
+    elif args.command == "train-all-models":
+        from src.models.train_all import train_all_models
+
+        train_all_models()
+    elif args.command == "predict":
+        from src.models.predict import predict_lgbm
+
+        predict_lgbm()
+    elif args.command == "predict-ensemble":
+        from src.models.predict import predict_ensemble
+
+        predict_ensemble()
+    elif args.command == "safe-agent":
+        from src.agents.safe_agent import run_safe_agent
+
+        run_safe_agent()
+    elif args.command == "backtest-safe-agent":
+        from src.backtesting.backtest_safe_agent import backtest_safe_agent
+
+        backtest_safe_agent()
+    elif args.command == "model-compare":
+        from src.validation.model_compare import run_model_compare
+
+        run_model_compare()
+    elif args.command == "walk-forward-backtest":
+        from src.validation.walk_forward import run_walk_forward
+
+        run_walk_forward()
+    elif args.command == "ablation-test":
+        from src.validation.ablation import run_ablation
+
+        run_ablation()
+    elif args.command == "phase2-report":
+        from src.validation.phase2_report import build_phase2_report
+
+        build_phase2_report()
 
     logger.info("Finished command: %s", args.command)
 

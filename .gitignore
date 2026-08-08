@@ -4,3 +4,6 @@ __pycache__/
 .env
 logs/*.log
 logs/data_quality_report.json
+/data/postgres/
+/data/processed/
+/models/

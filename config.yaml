@@ -7,3 +7,27 @@ tables:
   raw_results: raw_results
   raw_payouts: raw_payouts
   raw_odds: raw_odds
+
+modeling:
+  random_state: 42
+  test_size: 0.2
+  valid_size: 0.2
+  min_train_rows: 50
+  output_dir: models
+  predictions_path: data/processed/predictions_place.csv
+
+ensemble:
+  method: simple_average
+  weights:
+    lgbm: 0.34
+    catboost: 0.33
+    xgboost: 0.33
+
+safe_agent:
+  min_expected_value_place: 1.05
+  min_value_gap: 0.03
+  min_bet_score: 0.02
+  max_model_uncertainty: 0.10
+  stake_high: 1000
+  stake_mid: 500
+  stake_low: 300

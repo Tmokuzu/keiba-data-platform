@@ -2,7 +2,7 @@
 
 中央競馬AI用のデータ基盤プロジェクトです。
 
-このリポジトリはAIモデル学習、予測、買い目生成を行いません。JRA-VAN Data Lab. 由来の終了済み・確定済みレースデータをPostgreSQLに保存し、AI予測プロジェクトが読みやすい `ai` 層ビューとして公開することに特化します。
+このリポジトリはJRA-VAN Data Lab. 由来の終了済み・確定済みレースデータをPostgreSQLに保存し、AI予測プロジェクトが読みやすい `ai` 層ビューとして公開します。Phase1 MVP以降は、複勝に限定したモデル学習、予測、Safe Agent、バックテスト、検証レポートも同じCLIから実行できます。
 
 AI側、たとえば `keiba-ai-engine` は学習・バックテストでは原則として `ai_race_entries` と `ai_horse_history` だけを読みます。raw/core層の構造や将来のJRA-VAN取り込み仕様が変わっても、AI側の変更を小さく保つためです。
 
@@ -144,6 +144,67 @@ uv run python main.py validate
 ```bash
 uv run python main.py run-all
 ```
+
+## Phase2 複勝モデル
+
+Phase2では、複勝のみを対象に LightGBM / CatBoost / XGBoost とアンサンブル予測を実行します。単勝・ワイド等の券種にはまだ対応していません。
+
+追加依存関係:
+
+```bash
+uv sync
+```
+
+主要コマンド:
+
+```bash
+uv run python main.py train-place-model
+uv run python main.py train-catboost-place
+uv run python main.py train-xgboost-place
+uv run python main.py train-all-models
+uv run python main.py predict
+uv run python main.py predict-ensemble
+uv run python main.py safe-agent
+uv run python main.py backtest-safe-agent
+uv run python main.py model-compare
+uv run python main.py walk-forward-backtest
+uv run python main.py ablation-test
+uv run python main.py phase2-report
+```
+
+出力:
+
+- `models/lgbm_place_model.pkl`, `models/lgbm_place_metrics.json`
+- `models/catboost_place_model.pkl`, `models/catboost_place_metrics.json`
+- `models/xgboost_place_model.pkl`, `models/xgboost_place_metrics.json`
+- `data/processed/predictions_place.csv`
+- `data/processed/model_compare_summary.csv`
+- `data/processed/walk_forward_summary.csv`
+- `data/processed/walk_forward_detail.csv`
+- `data/processed/ablation_summary.csv`
+- `data/processed/phase2_report.json`
+
+`predict-ensemble` は以下を出力します。
+
+- `place_prob_lgbm`
+- `place_prob_catboost`
+- `place_prob_xgboost`
+- `place_prob_ensemble_raw`
+- `place_prob_calibrated`
+- `place_prob_final`
+- `model_uncertainty`
+- `expected_value_place`
+- `market_place_prob`
+- `value_gap`
+- `bet_score`
+
+アンサンブルは `config.yaml` の `ensemble.method` で `simple_average` または `weighted_average` を選べます。`weighted_average` では `ensemble.weights` を使います。
+
+Calibrationはvalidデータのみでfitし、testデータではfitしません。レース内確率補正では、8頭以上は複勝枠3、5から7頭は複勝枠2として、`race_id` ごとの合計確率を補正します。
+
+Safe Agentは既存条件に加え、`safe_agent.max_model_uncertainty` を使います。`model_uncertainty <= 0.06` は通常stake、`0.06 < model_uncertainty <= 0.10` は1段階減額、`0.10` 超はBUYしません。
+
+このプロジェクトの予測、バックテスト、検証結果は将来の利益を保証しません。実運用前に時系列分割、Walk-Forward、外部期間検証、資金管理ルールを必ず確認してください。
 
 `run-all` は以下を順番に実行します。
 

@@ -5,3 +5,9 @@ psycopg2-binary
 pyarrow
 python-dotenv
 pyyaml
+scikit-learn
+lightgbm
+catboost
+xgboost
+optuna
+joblib
