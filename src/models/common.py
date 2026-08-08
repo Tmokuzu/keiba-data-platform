@@ -167,7 +167,7 @@ def _add_shifted_history_features(frame: pd.DataFrame) -> pd.DataFrame:
     if "finish_position" in frame.columns:
         finish = pd.to_numeric(frame["finish_position"], errors="coerce")
         frame["hist_runs"] = frame.groupby("horse_id").cumcount()
-        frame["hist_avg_finish"] = finish.groupby(frame["horse_id"]).transform(lambda s: s.shift().expanding().mean())
+        frame["hist_avg_finish"] = _prior_group_mean(finish, frame["horse_id"])
         place_hits = pd.Series(
             [
                 place_target(position, field_size)
@@ -175,26 +175,15 @@ def _add_shifted_history_features(frame: pd.DataFrame) -> pd.DataFrame:
             ],
             index=frame.index,
         )
-        frame["hist_place_rate"] = (
-            place_hits.groupby(frame["horse_id"])
-            .transform(lambda s: s.shift().expanding().mean())
-        )
-        frame["hist_recent3_place_rate"] = place_hits.groupby(frame["horse_id"]).transform(
-            lambda s: s.shift().rolling(3, min_periods=1).mean()
-        )
-        frame["hist_recent5_place_rate"] = place_hits.groupby(frame["horse_id"]).transform(
-            lambda s: s.shift().rolling(5, min_periods=1).mean()
-        )
-        frame["hist_recent3_avg_finish"] = finish.groupby(frame["horse_id"]).transform(
-            lambda s: s.shift().rolling(3, min_periods=1).mean()
-        )
+        frame["hist_place_rate"] = _prior_group_mean(place_hits, frame["horse_id"])
+        frame["hist_recent3_place_rate"] = _prior_rolling_mean(place_hits, frame["horse_id"], 3)
+        frame["hist_recent5_place_rate"] = _prior_rolling_mean(place_hits, frame["horse_id"], 5)
+        frame["hist_recent3_avg_finish"] = _prior_rolling_mean(finish, frame["horse_id"], 3)
         _add_condition_history_features(frame, place_hits)
     if "last_3f" in frame.columns:
         last_3f = pd.to_numeric(frame["last_3f"], errors="coerce")
-        frame["hist_avg_last_3f"] = last_3f.groupby(frame["horse_id"]).transform(lambda s: s.shift().expanding().mean())
-        frame["hist_recent3_avg_last_3f"] = last_3f.groupby(frame["horse_id"]).transform(
-            lambda s: s.shift().rolling(3, min_periods=1).mean()
-        )
+        frame["hist_avg_last_3f"] = _prior_group_mean(last_3f, frame["horse_id"])
+        frame["hist_recent3_avg_last_3f"] = _prior_rolling_mean(last_3f, frame["horse_id"], 3)
     frame["hist_days_since_last_race"] = frame.groupby("horse_id")["race_date"].diff().dt.days
     return frame
 
@@ -235,9 +224,31 @@ def _add_condition_history_features(frame: pd.DataFrame, place_hits: pd.Series) 
         groups = [frame["horse_id"], frame[column]]
         prefix = "hist_distance_bucket" if column == "distance_bucket" else f"hist_{column}"
         frame[f"{prefix}_runs"] = frame.groupby(["horse_id", column], dropna=False).cumcount()
-        frame[f"{prefix}_place_rate"] = place_hits.groupby(groups, dropna=False).transform(
-            lambda s: s.shift().expanding().mean()
-        )
+        frame[f"{prefix}_place_rate"] = _prior_group_mean(place_hits, groups)
+
+
+def _prior_group_mean(values: pd.Series, groups: object) -> pd.Series:
+    """Mean of each group's observations strictly before the current row.
+
+    This is equivalent to ``shift().expanding().mean()`` but uses cumulative
+    aggregates, avoiding a Python callback per horse/condition group.
+    """
+    valid = values.notna().astype("int64")
+    cumulative_sum = values.fillna(0.0).groupby(groups, dropna=False).cumsum()
+    cumulative_count = valid.groupby(groups, dropna=False).cumsum()
+    return (cumulative_sum - values.fillna(0.0)) / (cumulative_count - valid).replace(0, np.nan)
+
+
+def _prior_rolling_mean(values: pd.Series, group: pd.Series, window: int) -> pd.Series:
+    """Rolling mean over the previous ``window`` starts for each horse."""
+    shifted = values.groupby(group, dropna=False).shift()
+    return (
+        shifted.groupby(group, dropna=False)
+        .rolling(window, min_periods=1)
+        .mean()
+        .reset_index(level=0, drop=True)
+        .reindex(values.index)
+    )
 
 
 def make_feature_spec(frame: pd.DataFrame) -> FeatureSpec:
