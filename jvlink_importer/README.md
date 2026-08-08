@@ -25,6 +25,12 @@ dotnet restore
 `appsettings.json`の接続文字列を環境に合わせて変更してください。
 `dotnet run`は`jvlink_importer`ディレクトリで実行してください。
 
+取込前に、プロジェクトルートでPython側のテーブルを作成します。
+
+```bash
+uv run python main.py init-db
+```
+
 WSL側PostgreSQLへWindowsから接続する場合、まずPowerShellで疎通確認します。
 
 ```powershell
