@@ -1,6 +1,8 @@
 using JvLinkImporter.Models;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace JvLinkImporter.Database;
 
@@ -34,6 +36,24 @@ public sealed class PostgresRepository : IAsyncDisposable
             HorseHistoryRecord => Task.CompletedTask,
             _ => throw new NotSupportedException($"Unsupported record type: {record.GetType().Name}")
         };
+    }
+
+    public async Task StoreRawRecordAsync(string dataSpec, string raw)
+    {
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{dataSpec}\n{raw}"));
+        var recordHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+        var recordType = raw.Length >= 2 ? raw[..2] : "";
+        const string sql = """
+            INSERT INTO raw_jv_records (record_hash, data_spec, record_type, raw_payload, source)
+            VALUES (@record_hash, @data_spec, @record_type, @raw_payload, 'jvlink')
+            ON CONFLICT (record_hash) DO NOTHING
+            """;
+        await using var command = _dataSource.CreateCommand(sql);
+        Add(command, "record_hash", recordHash);
+        Add(command, "data_spec", dataSpec);
+        Add(command, "record_type", recordType);
+        Add(command, "raw_payload", raw);
+        await ExecuteAsync(command);
     }
 
     public async Task<IReadOnlyList<string>> LoadRaceIdsByDateAsync(DateOnly raceDate)

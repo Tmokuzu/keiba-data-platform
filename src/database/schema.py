@@ -36,6 +36,7 @@ def init_db() -> None:
         SQL_DIR / "002_create_core_tables.sql",
         SQL_DIR / "003_create_ai_views.sql",
         SQL_DIR / "004_create_indexes.sql",
+        SQL_DIR / "005_create_jv_raw_archive.sql",
     ]
     for sql_file in sql_files:
         run_sql_file(sql_file)

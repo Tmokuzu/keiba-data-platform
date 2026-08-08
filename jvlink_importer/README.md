@@ -37,6 +37,18 @@ WSL側PostgreSQLへWindowsから接続する場合、まずPowerShellで疎通�
 Test-NetConnection localhost -Port 5432
 ```
 
+## 取得方針
+
+予測に使える可能性があるJV-Linkレコードは、対応パーサーが未実装でも `raw_jv_records`
+へそのまま保存します。これは将来の固定長位置検証・特徴量追加のための監査元データです。
+正規化済みの `raw_races` 等に書き込まれるのは、現在パーサー対応しているレコードだけです。
+
+Python側で先にアーカイブテーブルを作成してください。
+
+```bash
+uv run python main.py init-db
+```
+
 ## 実行
 
 まずJV-Link接続確認:
@@ -56,6 +68,41 @@ dotnet run -- import-setup --from 20230101000000 --types RA,SE,HR,O1 --max-read 
 ```powershell
 dotnet run -- import-diff --from 20240101000000 --types RA,SE,HR,O1 --max-read 20000 --progress-every 1000
 ```
+
+`--data-spec` により、JRA-VANの追加データ種別も取得・アーカイブできます。最初は各種別で
+`scan-types-*` を実行し、件数とレコード種別を確認してから本取込してください。
+
+| 目的 | DataSpec | 主なレコード | 現在の扱い |
+| --- | --- | --- | --- |
+| レース・成績・払戻 | `RACE` | RA, SE, HR, O1〜O6 | RA/SE/HR/O1を正規化、全件アーカイブ |
+| 馬・騎手・調教師等の差分マスタ | `DIFN` | UM, KS, CH, BR, BN, RC | アーカイブ、次段階で正規化 |
+| 出走時点の着度数 | `SNPN` | CK | アーカイブ、次段階で特徴量化 |
+| 坂路調教 | `SLOP` | HC | アーカイブ、次段階で特徴量化 |
+| ウッド調教 | `WOOD` | WC | アーカイブ、次段階で特徴量化 |
+| 血統 | `BLOD` | HN, SK, BT | アーカイブ、次段階で特徴量化 |
+| コース情報 | `COMM` | CS | アーカイブ、次段階で特徴量化 |
+| データマイニング予想 | `MING` | DM, TM | アーカイブ、採用は別途検証 |
+
+例: まずCKの提供レコードを確認してから取得する場合。
+
+```powershell
+dotnet run -- scan-types-setup --from 20230101000000 --data-spec SNPN --max-read 100000
+dotnet run -- import-setup --from 20230101000000 --data-spec SNPN --max-read 20000 --progress-every 1000
+```
+
+追加DataSpecを一括でアーカイブする場合は、Windows PowerShellで次を実行します。
+`SNPN` 等の補てん系データは2023-08-08以降を既定にしています。`RACE` もrawアーカイブへ
+再取得する場合だけ `-IncludeRace` を付けてください。
+
+```powershell
+cd jvlink_importer
+.\scripts\import-all-archive.ps1
+# RACEも含める場合
+.\scripts\import-all-archive.ps1 -IncludeRace -From 20230101000000
+```
+
+JRA-VANの契約・提供期間により取得可能範囲は異なります。特に時系列オッズは、実際にレース前に
+取得・保存した時刻付きデータだけを期待値の学習・検証に使います。
 
 当日の締切前オッズを時刻付きで保存:
 

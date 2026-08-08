@@ -63,6 +63,7 @@ public static class Program
                     ? parsedProgressEvery
                     : 1000;
                 var recordTypes = ParseRecordTypes(Option(args, "--types"));
+                var dataSpec = Option(args, "--data-spec") ?? settings.JvLink.DataSpec;
                 var option = command == "import-setup"
                     ? settings.JvLink.OptionSetup
                     : settings.JvLink.OptionDiff;
@@ -81,7 +82,7 @@ public static class Program
                     client,
                     parser,
                     repository,
-                    settings.JvLink.DataSpec,
+                    dataSpec,
                     option,
                     from,
                     maxRead,
@@ -103,6 +104,7 @@ public static class Program
                     ? parsedMaxRead
                     : 100000;
                 var output = Option(args, "--out");
+                var dataSpec = Option(args, "--data-spec") ?? settings.JvLink.DataSpec;
                 var option = command == "scan-types-setup"
                     ? settings.JvLink.OptionSetup
                     : settings.JvLink.OptionDiff;
@@ -111,7 +113,7 @@ public static class Program
                     settings.JvLink,
                     loggerFactory.CreateLogger<JvLinkClient>());
                 client.Initialize();
-                var counts = ScanTypes(client, settings.JvLink.DataSpec, option, from, maxRead);
+                var counts = ScanTypes(client, dataSpec, option, from, maxRead);
                 foreach (var (recordType, count) in counts.OrderBy(item => item.Key))
                 {
                     logger.LogInformation("RecordType={RecordType}, Count={Count}", recordType, count);
@@ -176,6 +178,7 @@ public static class Program
                     ? parsedMaxRead
                     : 10000;
                 var recordTypes = ParseRecordTypes(Option(args, "--types"));
+                var dataSpec = Option(args, "--data-spec") ?? settings.JvLink.DataSpec;
                 var option = command == "dump-raw-setup"
                     ? settings.JvLink.OptionSetup
                     : settings.JvLink.OptionDiff;
@@ -186,7 +189,7 @@ public static class Program
                 client.Initialize();
                 var stats = DumpRaw(
                     client,
-                    settings.JvLink.DataSpec,
+                    dataSpec,
                     option,
                     from,
                     output,
@@ -244,6 +247,7 @@ public static class Program
             }
 
             stats.ReadCount++;
+            await repository.StoreRawRecordAsync(dataSpec, raw);
             var recordType = RecordType(raw);
             if (recordTypes is not null && !recordTypes.Contains(recordType))
             {
@@ -305,6 +309,7 @@ public static class Program
                 }
 
                 stats.ReadCount++;
+                await repository.StoreRawRecordAsync(dataSpec, raw);
                 var records = parser.Parse(raw);
                 if (records.Count == 0)
                 {
@@ -514,8 +519,8 @@ public static class Program
         Console.WriteLine("""
         Usage:
           dotnet run -- check
-          dotnet run -- import-setup --from yyyyMMddHHmmss [--types RA,SE,HR,O1] [--max-read 10000] [--progress-every 1000]
-          dotnet run -- import-diff --from yyyyMMddHHmmss [--types RA,SE,HR,O1] [--max-read 10000] [--progress-every 1000]
+          dotnet run -- import-setup --from yyyyMMddHHmmss [--data-spec RACE] [--types RA,SE,HR,O1] [--max-read 10000] [--progress-every 1000]
+          dotnet run -- import-diff --from yyyyMMddHHmmss [--data-spec RACE] [--types RA,SE,HR,O1] [--max-read 10000] [--progress-every 1000]
           dotnet run -- import-rt-odds --date yyyy-MM-dd [--data-spec 0B31] [--progress-every 1]
           dotnet run -- scan-types-setup --from yyyyMMddHHmmss [--max-read 100000] [--out type_counts.csv]
           dotnet run -- scan-types-diff --from yyyyMMddHHmmss [--max-read 100000] [--out type_counts.csv]
