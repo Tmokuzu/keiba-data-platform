@@ -72,6 +72,9 @@ uv run python main.py train-all-models
 - `models/ensemble_place_calibrator.pkl`
 - `data/processed/predictions_place.csv`
 
+モデルは、直近成績・休養日数・コース／芝ダ／馬場／距離帯への適性と、利用可能な場合は
+レース内で正規化した市場評価を使います。特徴量や確定済み履歴を更新した後は、再学習してください。
+
 複勝ターゲットの定義や特徴量を変更した場合は、`build-ai-views` の後に必ず再学習してください。
 
 ## 3. 当日の予測を行う

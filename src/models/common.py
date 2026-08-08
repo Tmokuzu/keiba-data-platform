@@ -124,14 +124,15 @@ def prepare_model_frame(
         frame = frame[frame[TARGET_COL].notna()].copy()
         frame[TARGET_COL] = frame[TARGET_COL].astype(int)
 
-    for col in ["odds_win", "odds_place_min", "odds_place_max", "popularity", "field_size"]:
+    for col in ["odds_win", "odds_place_min", "odds_place_max", "popularity", "field_size", "horse_no"]:
         if col in frame.columns:
             frame[col] = pd.to_numeric(frame[col], errors="coerce")
 
-    if "odds_place_min" in frame.columns:
-        frame["market_place_prob"] = (1.0 / frame["odds_place_min"].clip(lower=1.01)).replace([np.inf, -np.inf], np.nan)
+    frame = _add_market_features(frame)
+    if "horse_no" in frame.columns and "field_size" in frame.columns:
+        frame["relative_gate_position"] = frame["horse_no"] / frame["field_size"].replace(0, np.nan)
     else:
-        frame["market_place_prob"] = np.nan
+        frame["relative_gate_position"] = np.nan
 
     frame = _add_shifted_history_features(frame)
 
@@ -167,19 +168,76 @@ def _add_shifted_history_features(frame: pd.DataFrame) -> pd.DataFrame:
         finish = pd.to_numeric(frame["finish_position"], errors="coerce")
         frame["hist_runs"] = frame.groupby("horse_id").cumcount()
         frame["hist_avg_finish"] = finish.groupby(frame["horse_id"]).transform(lambda s: s.shift().expanding().mean())
-        place_hits = [
-            place_target(position, field_size)
-            for position, field_size in zip(finish, frame["field_size"], strict=False)
-        ]
+        place_hits = pd.Series(
+            [
+                place_target(position, field_size)
+                for position, field_size in zip(finish, frame["field_size"], strict=False)
+            ],
+            index=frame.index,
+        )
         frame["hist_place_rate"] = (
-            pd.Series(place_hits, index=frame.index)
-            .groupby(frame["horse_id"])
+            place_hits.groupby(frame["horse_id"])
             .transform(lambda s: s.shift().expanding().mean())
         )
+        frame["hist_recent3_place_rate"] = place_hits.groupby(frame["horse_id"]).transform(
+            lambda s: s.shift().rolling(3, min_periods=1).mean()
+        )
+        frame["hist_recent5_place_rate"] = place_hits.groupby(frame["horse_id"]).transform(
+            lambda s: s.shift().rolling(5, min_periods=1).mean()
+        )
+        frame["hist_recent3_avg_finish"] = finish.groupby(frame["horse_id"]).transform(
+            lambda s: s.shift().rolling(3, min_periods=1).mean()
+        )
+        _add_condition_history_features(frame, place_hits)
     if "last_3f" in frame.columns:
         last_3f = pd.to_numeric(frame["last_3f"], errors="coerce")
         frame["hist_avg_last_3f"] = last_3f.groupby(frame["horse_id"]).transform(lambda s: s.shift().expanding().mean())
+        frame["hist_recent3_avg_last_3f"] = last_3f.groupby(frame["horse_id"]).transform(
+            lambda s: s.shift().rolling(3, min_periods=1).mean()
+        )
+    frame["hist_days_since_last_race"] = frame.groupby("horse_id")["race_date"].diff().dt.days
     return frame
+
+
+def _add_market_features(frame: pd.DataFrame) -> pd.DataFrame:
+    if "odds_place_min" not in frame.columns:
+        frame["market_place_prob"] = np.nan
+        frame["market_place_prob_normalized"] = np.nan
+        frame["market_place_rank"] = np.nan
+        frame["market_place_overround"] = np.nan
+        return frame
+
+    odds = pd.to_numeric(frame["odds_place_min"], errors="coerce")
+    inverse_odds = (1.0 / odds.clip(lower=1.01)).replace([np.inf, -np.inf], np.nan)
+    total = inverse_odds.groupby(frame["race_id"]).transform("sum")
+    frame["market_place_prob"] = inverse_odds
+    frame["market_place_prob_normalized"] = inverse_odds / total.replace(0, np.nan)
+    frame["market_place_rank"] = odds.groupby(frame["race_id"]).rank(method="min", ascending=True)
+    frame["market_place_overround"] = total
+    return frame
+
+
+def _add_condition_history_features(frame: pd.DataFrame, place_hits: pd.Series) -> None:
+    distance = (
+        pd.to_numeric(frame["distance"], errors="coerce")
+        if "distance" in frame.columns
+        else pd.Series(np.nan, index=frame.index)
+    )
+    frame["distance_bucket"] = pd.cut(
+        distance,
+        bins=[0, 1200, 1600, 2000, np.inf],
+        labels=["sprint", "mile", "middle", "long"],
+        include_lowest=True,
+    ).astype("string")
+    for column in ["surface", "course", "ground_condition", "distance_bucket"]:
+        if column not in frame:
+            continue
+        groups = [frame["horse_id"], frame[column]]
+        prefix = "hist_distance_bucket" if column == "distance_bucket" else f"hist_{column}"
+        frame[f"{prefix}_runs"] = frame.groupby(["horse_id", column], dropna=False).cumcount()
+        frame[f"{prefix}_place_rate"] = place_hits.groupby(groups, dropna=False).transform(
+            lambda s: s.shift().expanding().mean()
+        )
 
 
 def make_feature_spec(frame: pd.DataFrame) -> FeatureSpec:
@@ -201,14 +259,22 @@ def make_feature_spec(frame: pd.DataFrame) -> FeatureSpec:
     ablations = set(frame.attrs.get("excluded_feature_groups", []))
     if "no_odds" in ablations:
         excluded.update(["odds_win", "odds_place_min", "odds_place_max", "popularity"])
+        excluded.update([c for c in frame.columns if c.startswith("market_")])
     if "no_market_features" in ablations:
-        excluded.add("market_place_prob")
+        excluded.update([c for c in frame.columns if c.startswith("market_")])
     if "no_recent_form" in ablations:
         excluded.update([c for c in frame.columns if c.startswith("hist_")])
     if "no_jockey_trainer_id" in ablations:
         excluded.update(["jockey_id", "trainer_id", "jockey_name", "trainer_name"])
     if "no_suitability" in ablations:
         excluded.update(["course", "surface", "distance", "direction"])
+        excluded.update(
+            [
+                c
+                for c in frame.columns
+                if c.startswith(("hist_surface_", "hist_course_", "hist_ground_condition_", "hist_distance_bucket_"))
+            ]
+        )
     if "no_race_grade_ground_condition" in ablations:
         excluded.update(["race_class", "race_grade", "ground_condition", "weather"])
     known_categorical = {
