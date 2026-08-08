@@ -40,6 +40,9 @@ modeling:
       field_size_8_or_more: 3
       field_size_5_to_7: 2
 
+data:
+  odds_snapshot_cutoff_minutes_before_start: 1
+
 ensemble:
   method: simple_average
   weights:
@@ -57,6 +60,8 @@ safe_agent:
   stake_low: 300
 
 validation:
+  threshold_optimization:
+    min_validation_bets: 50
   walk_forward:
     folds:
       - train_start: 2016
@@ -106,3 +111,5 @@ artifacts:
     walk_forward_detail: data/processed/walk_forward_detail.csv
     ablation_summary: data/processed/ablation_summary.csv
     report: data/processed/phase2_report.json
+    segmented_backtest_report: data/processed/segmented_backtest_report.csv
+    threshold_optimization_report: data/processed/threshold_optimization_report.json

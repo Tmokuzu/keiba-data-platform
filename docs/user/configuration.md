@@ -1,10 +1,10 @@
-# Configuration
+# 設定
 
-The main runtime file is `config.yaml`. Use `config.example.yaml` as a clean template.
+実行時設定は `config.yaml` です。初期化には `config.example.yaml` を使います。
 
-## Environment
+## PostgreSQL接続
 
-Database credentials live in `.env`, not in Git:
+接続情報はGitへ入れず、`.env` に保存します。
 
 ```env
 POSTGRES_HOST=localhost
@@ -14,9 +14,9 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=password
 ```
 
-## Paths
+## パス
 
-`paths` is the preferred structured location:
+`paths` で生成物と一時データの保存先を指定します。
 
 ```yaml
 paths:
@@ -27,9 +27,9 @@ paths:
   log_dir: logs
 ```
 
-`raw_data_dir` and `temp_data_dir` also remain at the top level for backward compatibility.
+`raw_data_dir` と `temp_data_dir` のトップレベル設定は後方互換用です。通常は `paths` を使います。
 
-## Modeling
+## モデル
 
 `modeling` controls the place target, time split size, calibration, and probability correction:
 
@@ -45,9 +45,10 @@ modeling:
     fit_split: valid
 ```
 
-Calibration must be fit on valid data only. Test data is for evaluation.
+複勝は8頭以上で3着以内、5〜7頭で2着以内を的中とします。校正は検証期間だけで行い、
+テスト期間は評価専用です。
 
-## Ensemble
+## アンサンブル
 
 ```yaml
 ensemble:
@@ -58,7 +59,7 @@ ensemble:
     xgboost: 0.33
 ```
 
-Supported methods:
+利用できる方式:
 
 - `simple_average`
 - `weighted_average`
@@ -76,14 +77,26 @@ safe_agent:
   stake_low: 300
 ```
 
-`model_uncertainty > max_model_uncertainty` means no BUY.
+`model_uncertainty > max_model_uncertainty` の馬は購入しません。`min_expected_value_place`、
+`min_value_gap`、`min_bet_score` は `optimize-thresholds` の候補と一致しています。
 
-## Validation
+## 締切前オッズ
 
-Walk-forward folds are configurable:
+```yaml
+data:
+  odds_snapshot_cutoff_minutes_before_start: 1
+```
+
+`check-odds-snapshots` が、有効なオッズとみなす発走前の猶予時間です。
+
+## 検証
+
+Walk-Forwardの期間と、閾値選択に必要な最小買い目数を設定できます。
 
 ```yaml
 validation:
+  threshold_optimization:
+    min_validation_bets: 50
   walk_forward:
     folds:
       - train_start: 2016
@@ -94,4 +107,5 @@ validation:
         test_end: 2021
 ```
 
-Keep all folds chronological.
+すべての期間は時系列順に保ってください。テスト期間を見て設定を変えた場合は、新しい将来期間または
+Walk-Forwardで改めて評価します。

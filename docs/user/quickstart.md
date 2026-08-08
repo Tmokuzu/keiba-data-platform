@@ -1,13 +1,16 @@
-# Quickstart
+# クイックスタート
 
-## Setup
+通常の利用手順は [利用ガイド](usage.md) を参照してください。このページは初回セットアップと
+最短の確認手順だけをまとめています。
+
+## 初期設定
 
 ```bash
 uv sync
 cp .env.example .env
 ```
 
-Edit `.env` for your PostgreSQL connection:
+`.env` にPostgreSQL接続情報を設定します。
 
 ```env
 POSTGRES_HOST=localhost
@@ -17,13 +20,13 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=password
 ```
 
-Check the connection:
+接続を確認します。
 
 ```bash
 uv run python main.py check-db
 ```
 
-## Refresh The Database
+## 確定済みデータの取り込み
 
 Place CSV files in `data/raw/`, then run:
 
@@ -35,9 +38,10 @@ uv run python main.py build-ai-views
 uv run python main.py validate
 ```
 
-`sync-ended` only moves ended and confirmed races into core tables. Same-day or unconfirmed race data should stay outside core DB.
+`sync-ended` がcore層へ送るのは、終了・確定済みレースだけです。当日・未確定データはraw層または
+`temp/` に置き、core DBには混在させません。
 
-## Phase2 Place Modeling
+## Phase 2の学習と予測
 
 Train all place models and build ensemble predictions:
 
@@ -48,7 +52,7 @@ uv run python main.py safe-agent
 uv run python main.py backtest-safe-agent
 ```
 
-Run validation reports:
+検証レポート:
 
 ```bash
 uv run python main.py model-compare
@@ -57,4 +61,5 @@ uv run python main.py ablation-test
 uv run python main.py phase2-report
 ```
 
-Backtests and model metrics do not guarantee future profit.
+当日予測、締切前オッズ確認、出力の読み方は [利用ガイド](usage.md) を参照してください。
+バックテストやモデル指標は将来の利益を保証しません。

@@ -36,6 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
         "build-core",
         "build-ai-views",
         "validate",
+        "check-odds-snapshots",
+        "predict-today",
         "run-all",
         "train-place-model",
         "train-catboost-place",
@@ -49,10 +51,17 @@ def build_parser() -> argparse.ArgumentParser:
         "walk-forward-backtest",
         "ablation-test",
         "phase2-report",
+        "segmented-backtest-report",
+        "optimize-thresholds",
     ]
 
     for name in commands:
-        subparsers.add_parser(name)
+        command_parser = subparsers.add_parser(name)
+        if name == "check-odds-snapshots":
+            command_parser.add_argument("--date", required=True, help="Race date in YYYY-MM-DD format")
+        if name == "predict-today":
+            command_parser.add_argument("--date", help="Race date in YYYY-MM-DD format")
+            command_parser.add_argument("--today-csv", required=True, help="Unconfirmed race entry CSV")
     return parser
 
 
@@ -89,6 +98,14 @@ def main() -> None:
         from src.validators.data_quality import run_data_quality_checks
 
         run_data_quality_checks()
+    elif args.command == "check-odds-snapshots":
+        from src.validators.odds_snapshots import check_odds_snapshot_coverage
+
+        check_odds_snapshot_coverage(args.date)
+    elif args.command == "predict-today":
+        from src.prediction.predict_today import run_predict_today
+
+        run_predict_today(args.date, args.today_csv)
     elif args.command == "run-all":
         run_all()
     elif args.command == "train-place-model":
@@ -139,6 +156,14 @@ def main() -> None:
         from src.validation.phase2_report import build_phase2_report
 
         build_phase2_report()
+    elif args.command == "segmented-backtest-report":
+        from src.validation.segmented_report import run_segmented_backtest_report
+
+        run_segmented_backtest_report()
+    elif args.command == "optimize-thresholds":
+        from src.validation.threshold_optimization import run_threshold_optimization
+
+        run_threshold_optimization()
 
     logger.info("Finished command: %s", args.command)
 

@@ -44,6 +44,16 @@ class FeatureSpec:
     categorical_cols: list[str]
 
 
+def place_target(finish_position: object, field_size: object) -> float:
+    """Return the JRA place target, or NaN when the race is not eligible."""
+    finish = pd.to_numeric(pd.Series([finish_position]), errors="coerce").iloc[0]
+    field = pd.to_numeric(pd.Series([field_size]), errors="coerce").iloc[0]
+    if pd.isna(finish) or pd.isna(field) or field < 5:
+        return float("nan")
+    slots = 3 if field >= 8 else 2
+    return float(int(finish <= slots))
+
+
 def load_config() -> dict[str, Any]:
     config = load_yaml_config()
     config.setdefault("paths", {})
@@ -89,11 +99,10 @@ def _load_raw_csv_fallback() -> pd.DataFrame:
 
     df = races.merge(entries, on="race_id", how="inner", suffixes=("", "_entry"))
     df = df.merge(results, on=["race_id", "horse_id"], how="left", suffixes=("", "_result"))
-    df["target_place"] = np.where(
-        df["finish_position"].between(1, 3, inclusive="both"),
-        1,
-        np.where(df["finish_position"].notna(), 0, np.nan),
-    )
+    df["target_place"] = [
+        place_target(finish, field_size)
+        for finish, field_size in zip(df["finish_position"], df["field_size"], strict=False)
+    ]
     place = payouts[payouts["ticket_type"].isin(["place", "複勝"])].copy()
     place["horse_no"] = pd.to_numeric(place["combination"], errors="coerce")
     df = df.merge(place[["race_id", "horse_no", "payout"]], on=["race_id", "horse_no"], how="left")
@@ -102,13 +111,18 @@ def _load_raw_csv_fallback() -> pd.DataFrame:
     return df
 
 
-def prepare_model_frame(df: pd.DataFrame, excluded_feature_groups: list[str] | None = None) -> pd.DataFrame:
+def prepare_model_frame(
+    df: pd.DataFrame,
+    excluded_feature_groups: list[str] | None = None,
+    require_target: bool = True,
+) -> pd.DataFrame:
     excluded = set(excluded_feature_groups or [])
     frame = df.copy()
     frame.attrs["excluded_feature_groups"] = list(excluded)
     frame["race_date"] = pd.to_datetime(frame["race_date"], errors="coerce")
-    frame = frame[frame[TARGET_COL].notna()].copy()
-    frame[TARGET_COL] = frame[TARGET_COL].astype(int)
+    if require_target:
+        frame = frame[frame[TARGET_COL].notna()].copy()
+        frame[TARGET_COL] = frame[TARGET_COL].astype(int)
 
     for col in ["odds_win", "odds_place_min", "odds_place_max", "popularity", "field_size"]:
         if col in frame.columns:
@@ -124,6 +138,28 @@ def prepare_model_frame(df: pd.DataFrame, excluded_feature_groups: list[str] | N
     return frame.sort_values(["race_date", "race_id", "horse_no"], kind="mergesort").reset_index(drop=True)
 
 
+def prepare_prediction_frame(
+    prediction_rows: pd.DataFrame,
+    confirmed_history: pd.DataFrame,
+) -> pd.DataFrame:
+    """Build prediction features without adding unconfirmed rows to the core DB."""
+    if prediction_rows.empty:
+        raise ValueError("prediction_rows is empty")
+    if "race_id" not in prediction_rows or "horse_id" not in prediction_rows:
+        raise ValueError("prediction_rows must include race_id and horse_id")
+
+    current = prediction_rows.copy()
+    if TARGET_COL not in current:
+        current[TARGET_COL] = np.nan
+    current["_prediction_row"] = True
+    history = confirmed_history.copy()
+    history["_prediction_row"] = False
+    combined = pd.concat([history, current], ignore_index=True, sort=False)
+    prepared = prepare_model_frame(combined, require_target=False)
+    result = prepared[prepared["_prediction_row"]].copy()
+    return result.drop(columns=["_prediction_row"])
+
+
 def _add_shifted_history_features(frame: pd.DataFrame) -> pd.DataFrame:
     sort_cols = ["horse_id", "race_date", "race_id"]
     frame = frame.sort_values(sort_cols, kind="mergesort").copy()
@@ -131,7 +167,15 @@ def _add_shifted_history_features(frame: pd.DataFrame) -> pd.DataFrame:
         finish = pd.to_numeric(frame["finish_position"], errors="coerce")
         frame["hist_runs"] = frame.groupby("horse_id").cumcount()
         frame["hist_avg_finish"] = finish.groupby(frame["horse_id"]).transform(lambda s: s.shift().expanding().mean())
-        frame["hist_place_rate"] = (finish <= 3).astype(float).groupby(frame["horse_id"]).transform(lambda s: s.shift().expanding().mean())
+        place_hits = [
+            place_target(position, field_size)
+            for position, field_size in zip(finish, frame["field_size"], strict=False)
+        ]
+        frame["hist_place_rate"] = (
+            pd.Series(place_hits, index=frame.index)
+            .groupby(frame["horse_id"])
+            .transform(lambda s: s.shift().expanding().mean())
+        )
     if "last_3f" in frame.columns:
         last_3f = pd.to_numeric(frame["last_3f"], errors="coerce")
         frame["hist_avg_last_3f"] = last_3f.groupby(frame["horse_id"]).transform(lambda s: s.shift().expanding().mean())

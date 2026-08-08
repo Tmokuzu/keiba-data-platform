@@ -27,9 +27,10 @@ def predict_ensemble(
     frame: pd.DataFrame | None = None,
     output_path: Path | None = None,
     calibrator_frame: pd.DataFrame | None = None,
+    frame_is_prepared: bool = False,
 ) -> pd.DataFrame:
     raw = load_ai_race_entries() if frame is None else frame
-    data = prepare_model_frame(raw)
+    data = raw.copy() if frame_is_prepared else prepare_model_frame(raw)
     predictions = data.copy()
     artifacts = {name: load_artifact(MODELS_DIR / f"{name}_place_model.pkl") for name in MODEL_NAMES}
 
@@ -54,9 +55,13 @@ def predict_ensemble(
     return result
 
 
-def predict_lgbm(frame: pd.DataFrame | None = None, output_path: Path | None = None) -> pd.DataFrame:
+def predict_lgbm(
+    frame: pd.DataFrame | None = None,
+    output_path: Path | None = None,
+    frame_is_prepared: bool = False,
+) -> pd.DataFrame:
     raw = load_ai_race_entries() if frame is None else frame
-    data = prepare_model_frame(raw)
+    data = raw.copy() if frame_is_prepared else prepare_model_frame(raw)
     artifact = load_artifact(MODELS_DIR / "lgbm_place_model.pkl")
     predictions = data.copy()
     predictions["place_prob_lgbm"] = _predict_with_artifact(artifact, data, calibrated=True)

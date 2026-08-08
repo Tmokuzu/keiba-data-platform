@@ -6,8 +6,8 @@ import joblib
 import pandas as pd
 
 from src.agents.safe_agent import apply_safe_agent
-from src.backtesting.metrics import evaluate_predictions
-from src.models.common import MODELS_DIR, MODEL_NAMES, PROCESSED_DIR, load_ai_race_entries, load_config, prepare_model_frame, split_by_years
+from src.backtesting.metrics import evaluate_predictions, settle_bets
+from src.models.common import MODELS_DIR, MODEL_NAMES, PROCESSED_DIR, load_ai_race_entries, load_config, prepare_model_frame, race_probability_correction, split_by_years
 from src.models.ensemble import apply_ensemble_calibration, ensemble_probabilities, fit_ensemble_calibrator, model_uncertainty
 from src.models.predict import _add_value_columns, _predict_with_artifact
 from src.models.train_catboost_place import train_catboost_place
@@ -62,10 +62,11 @@ def run_walk_forward(output_summary_path: Path | None = None, output_detail_path
         test["model_uncertainty"] = model_uncertainty(test)
         test["place_prob_ensemble_raw"] = ensemble_probabilities(test)
         test["place_prob_calibrated"] = apply_ensemble_calibration(test, calibrator)
-        test["place_prob_final"] = test["place_prob_calibrated"]
+        test["place_prob_final"] = race_probability_correction(test, "place_prob_calibrated")
         test = _add_value_columns(test)
-        bets = apply_safe_agent(test)
-        metrics = evaluate_predictions(bets)
+        safe_agent_output = apply_safe_agent(test)
+        metrics = evaluate_predictions(safe_agent_output)
+        bets = settle_bets(safe_agent_output)
         row = {
             "train_start": train_start,
             "train_end": train_end,
@@ -84,8 +85,8 @@ def run_walk_forward(output_summary_path: Path | None = None, output_detail_path
             "brier": metrics.get("brier"),
         }
         summary_rows.append(row)
-        test = test.assign(**{k: v for k, v in row.items() if k != "profit"})
-        details.append(test)
+        bets = bets.assign(**{k: v for k, v in row.items() if k != "profit"})
+        details.append(bets)
 
     summary = pd.DataFrame(summary_rows)
     detail = pd.concat(details, ignore_index=True) if details else pd.DataFrame()

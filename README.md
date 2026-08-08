@@ -24,6 +24,7 @@ Phase1ではJV-Link本接続は未実装です。`src/ingestion/jvlink_placehold
 詳細な運用手順と設定説明は `docs/` に分けています。
 
 - ユーザー向け入口: `docs/user/quickstart.md`
+- 日常利用の手順: `docs/user/usage.md`
 - 設定説明: `docs/user/configuration.md`
 - 運用手順: `docs/user/operations.md`
 - Codex向け作業入口: `AGENTS.md`
@@ -147,7 +148,31 @@ uv run python main.py import-csv
 uv run python main.py sync-ended
 uv run python main.py build-ai-views
 uv run python main.py validate
+uv run python main.py check-odds-snapshots --date 2026-06-06
+uv run python main.py predict-today --date 2026-06-06 --today-csv data/today/entries_20260606.csv
+uv run python main.py segmented-backtest-report
+uv run python main.py optimize-thresholds
 ```
+
+`check-odds-snapshots` は `raw_*` 層の出走表とオッズを読むため、当日データをcore DBへ
+混在させずに締切前複勝オッズのカバレッジを確認できます。`ready=true` は出走馬の95%以上に
+有効な事前オッズがあることを示します。
+
+複勝ターゲットは、8頭以上では3着以内、5〜7頭では2着以内として扱います。既存DBを使う
+場合は `build-ai-views` を実行してビューを更新し、その後にモデルを再学習してください。
+
+`predict-today` は入力CSVを `temp/` と `data/processed/prediction_logs/{run_id}/` に保存して
+から、確定済み履歴と結合して予測します。未確定の出走表・オッズ・馬体重はcore DBへ保存
+しません。CSVには少なくとも `race_id` と `horse_id` が必要で、`race_date` と `field_size` は
+省略時にコマンド引数・レース内の出走馬数から補います。
+
+`segmented-backtest-report` は `walk-forward-backtest` が出力した確定済みの買い目明細を、
+競馬場・距離・馬場・人気帯・オッズ帯・期待値帯・年月で集計します。ROIは常に
+`払戻額 / 賭け金` であり、1.0を超えると利益が出ていることを示します。
+
+`optimize-thresholds` は `predictions_place.csv` を時系列で分割し、検証期間だけでSafe Agentの
+閾値を選びます。テスト期間は、選んだ固定閾値の最終評価にしか使いません。レポートを見て
+閾値を変更した場合は、同じテスト期間での評価を再利用せず、Walk-Forwardで再検証してください。
 
 一括実行:
 

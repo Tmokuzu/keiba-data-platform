@@ -42,8 +42,10 @@ SELECT
     res.corner_order,
     res.last_3f,
     CASE
-        WHEN res.finish_position BETWEEN 1 AND 3 THEN 1
-        WHEN res.finish_position IS NOT NULL THEN 0
+        WHEN res.finish_position IS NULL THEN NULL
+        WHEN r.field_size >= 8 AND res.finish_position BETWEEN 1 AND 3 THEN 1
+        WHEN r.field_size BETWEEN 5 AND 7 AND res.finish_position BETWEEN 1 AND 2 THEN 1
+        WHEN r.field_size >= 5 THEN 0
         ELSE NULL
     END AS target_place,
     place_payout.payout AS payout_place

@@ -88,7 +88,7 @@ def _ablation_findings(ablation: pd.DataFrame) -> list[dict[str, Any]]:
 def _recommendation(compare: pd.DataFrame, walk_forward: pd.DataFrame) -> str:
     best_roi = _best(compare, "ROI", higher=True)
     avg_roi = float(walk_forward["roi"].mean()) if not walk_forward.empty else None
-    if best_roi and best_roi["model_type"].startswith("ensemble") and avg_roi is not None and avg_roi > 0:
+    if best_roi and best_roi["model_type"].startswith("ensemble") and avg_roi is not None and avg_roi > 1.0:
         return "Use ensemble predictions with Safe Agent uncertainty filtering, while continuing walk-forward monitoring."
     return "Prefer the most stable calibrated model and keep Safe Agent uncertainty filtering enabled before any live use."
 
