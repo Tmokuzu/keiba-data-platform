@@ -10,6 +10,7 @@
 - [設定](docs/user/configuration.md): `.env` と `config.yaml`
 - [運用・トラブルシューティング](docs/user/operations.md): 障害時と日常更新
 - [JV-Link Importer](jvlink_importer/README.md): WindowsでJRA-VAN Data Lab.から直接取り込む場合
+- [中央競馬向け特徴量設計](docs/design/central_feature_design.md): 精度改善の設計と取込拡張の優先順位
 
 ## 設計
 
