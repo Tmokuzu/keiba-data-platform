@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from urllib.parse import quote_plus
+from urllib.parse import urlencode
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
@@ -20,7 +21,9 @@ def get_database_url() -> str:
     db = os.getenv("POSTGRES_DB", "keiba")
     user = os.getenv("POSTGRES_USER", "postgres")
     password = quote_plus(os.getenv("POSTGRES_PASSWORD", "password"))
-    return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
+    sslmode = os.getenv("POSTGRES_SSLMODE")
+    query = f"?{urlencode({'sslmode': sslmode})}" if sslmode else ""
+    return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}{query}"
 
 
 def get_engine() -> Engine:

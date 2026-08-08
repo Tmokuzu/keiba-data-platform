@@ -3,16 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-import yaml
 
 from src.database.connection import get_engine
 from src.database.upsert import upsert_dataframe
+from src.utils.config import CONFIG_PATH, PROJECT_ROOT, configured_path, load_yaml_config
 from src.utils.logger import get_logger
 
 
 logger = get_logger(__name__)
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
 CSV_SPECS = {
     "races.csv": ("raw_races", ["race_id"]),
@@ -24,9 +22,7 @@ CSV_SPECS = {
 
 
 def load_config() -> dict:
-    if not CONFIG_PATH.exists():
-        return {"raw_data_dir": "data/raw", "tables": {}}
-    return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8")) or {}
+    return load_yaml_config() or {"raw_data_dir": "data/raw", "tables": {}}
 
 
 def read_csv(path: Path) -> pd.DataFrame:
@@ -35,7 +31,7 @@ def read_csv(path: Path) -> pd.DataFrame:
 
 def import_csv_files() -> dict[str, int]:
     config = load_config()
-    raw_data_dir = PROJECT_ROOT / config.get("raw_data_dir", "data/raw")
+    raw_data_dir = configured_path(config, "raw_data_dir", "data/raw")
     tables = config.get("tables", {})
     engine = get_engine()
     imported: dict[str, int] = {}

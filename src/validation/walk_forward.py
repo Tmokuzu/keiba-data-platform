@@ -7,7 +7,7 @@ import pandas as pd
 
 from src.agents.safe_agent import apply_safe_agent
 from src.backtesting.metrics import evaluate_predictions
-from src.models.common import MODELS_DIR, MODEL_NAMES, PROCESSED_DIR, load_ai_race_entries, prepare_model_frame, split_by_years
+from src.models.common import MODELS_DIR, MODEL_NAMES, PROCESSED_DIR, load_ai_race_entries, load_config, prepare_model_frame, split_by_years
 from src.models.ensemble import apply_ensemble_calibration, ensemble_probabilities, fit_ensemble_calibrator, model_uncertainty
 from src.models.predict import _add_value_columns, _predict_with_artifact
 from src.models.train_catboost_place import train_catboost_place
@@ -19,12 +19,12 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-FOLDS = [
-    (2016, 2019, 2020, 2020, 2021, 2021),
-    (2016, 2020, 2021, 2021, 2022, 2022),
-    (2016, 2021, 2022, 2022, 2023, 2023),
-    (2016, 2022, 2023, 2023, 2024, 2024),
-    (2016, 2023, 2024, 2024, 2025, 2025),
+DEFAULT_FOLDS = [
+    {"train_start": 2016, "train_end": 2019, "valid_start": 2020, "valid_end": 2020, "test_start": 2021, "test_end": 2021},
+    {"train_start": 2016, "train_end": 2020, "valid_start": 2021, "valid_end": 2021, "test_start": 2022, "test_end": 2022},
+    {"train_start": 2016, "train_end": 2021, "valid_start": 2022, "valid_end": 2022, "test_start": 2023, "test_end": 2023},
+    {"train_start": 2016, "train_end": 2022, "valid_start": 2023, "valid_end": 2023, "test_start": 2024, "test_end": 2024},
+    {"train_start": 2016, "train_end": 2023, "valid_start": 2024, "valid_end": 2024, "test_start": 2025, "test_end": 2025},
 ]
 
 
@@ -33,8 +33,14 @@ def run_walk_forward(output_summary_path: Path | None = None, output_detail_path
     summary_rows: list[dict] = []
     details: list[pd.DataFrame] = []
 
-    for fold in FOLDS:
-        train_start, train_end, valid_start, valid_end, test_start, test_end = fold
+    for fold_config in _configured_folds():
+        train_start = int(fold_config["train_start"])
+        train_end = int(fold_config["train_end"])
+        valid_start = int(fold_config["valid_start"])
+        valid_end = int(fold_config["valid_end"])
+        test_start = int(fold_config["test_start"])
+        test_end = int(fold_config["test_end"])
+        fold = (train_start, train_end, valid_start, valid_end, test_start, test_end)
         split = split_by_years(data, train_start, train_end, valid_start, valid_end, test_start, test_end)
         if split.train.empty or split.valid.empty or split.test.empty:
             logger.warning("Skipping empty walk-forward fold: %s", fold)
@@ -94,6 +100,11 @@ def run_walk_forward(output_summary_path: Path | None = None, output_detail_path
 
 def main() -> None:
     run_walk_forward()
+
+
+def _configured_folds() -> list[dict[str, int]]:
+    config = load_config()
+    return config.get("validation", {}).get("walk_forward", {}).get("folds", DEFAULT_FOLDS)
 
 
 if __name__ == "__main__":

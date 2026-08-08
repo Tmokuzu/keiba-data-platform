@@ -9,7 +9,6 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
-import yaml
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -18,11 +17,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
 from src.database.connection import get_engine
+from src.utils.config import PROJECT_ROOT, configured_path, load_yaml_config
 from src.utils.logger import get_logger
 
 
 logger = get_logger(__name__)
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MODELS_DIR = PROJECT_ROOT / "models"
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
@@ -46,8 +45,12 @@ class FeatureSpec:
 
 
 def load_config() -> dict[str, Any]:
-    path = PROJECT_ROOT / "config.yaml"
-    config = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+    config = load_yaml_config()
+    config.setdefault("paths", {})
+    config["paths"].setdefault("raw_data_dir", config.get("raw_data_dir", "data/raw"))
+    config["paths"].setdefault("temp_data_dir", config.get("temp_data_dir", "temp"))
+    config["paths"].setdefault("processed_data_dir", "data/processed")
+    config["paths"].setdefault("model_dir", "models")
     config.setdefault("modeling", {})
     config["modeling"].setdefault("random_state", 42)
     config["modeling"].setdefault("valid_size", 0.2)
@@ -78,7 +81,7 @@ def load_ai_race_entries() -> pd.DataFrame:
 
 
 def _load_raw_csv_fallback() -> pd.DataFrame:
-    raw_dir = PROJECT_ROOT / "data" / "raw"
+    raw_dir = configured_path(load_config(), "raw_data_dir", "data/raw")
     races = pd.read_csv(raw_dir / "races.csv")
     entries = pd.read_csv(raw_dir / "entries.csv")
     results = pd.read_csv(raw_dir / "results.csv")

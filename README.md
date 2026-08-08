@@ -19,6 +19,16 @@ ended raw CSV -> raw tables -> sync-ended -> core tables -> ai views
 
 Phase1ではJV-Link本接続は未実装です。`src/ingestion/jvlink_placeholder.py` に将来差し替え用の入口だけを置いています。
 
+## ドキュメント
+
+詳細な運用手順と設定説明は `docs/` に分けています。
+
+- ユーザー向け入口: `docs/user/quickstart.md`
+- 設定説明: `docs/user/configuration.md`
+- 運用手順: `docs/user/operations.md`
+- Codex向け作業入口: `AGENTS.md`
+- Codex向け詳細: `docs/codex/context.md`, `docs/codex/commands.md`
+
 ## 重要な設計方針
 
 core DBには、終了済み・確定済みのレースデータだけを保存します。

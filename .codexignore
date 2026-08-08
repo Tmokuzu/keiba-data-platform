@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+data/postgres/
+data/processed/
+models/
+logs/*.log
+logs/data_quality_report.json
+
+data/raw/*.csv
+uv.lock

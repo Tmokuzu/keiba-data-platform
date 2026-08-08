@@ -3,17 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-import yaml
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-CONFIG_PATH = PROJECT_ROOT / "config.yaml"
+from src.utils.config import configured_path, load_yaml_config
 
 
 def get_temp_data_dir() -> Path:
-    config = yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8")) or {}
-    temp_data_dir = config.get("temp_data_dir", "temp")
-    path = PROJECT_ROOT / temp_data_dir
+    config = load_yaml_config()
+    path = configured_path(config, "temp_data_dir", "temp")
     path.mkdir(parents=True, exist_ok=True)
     return path
 

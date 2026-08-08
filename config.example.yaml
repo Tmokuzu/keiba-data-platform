@@ -11,7 +11,6 @@ paths:
   model_dir: models
   log_dir: logs
 
-# Backward-compatible aliases used by older ingestion helpers.
 raw_data_dir: data/raw
 temp_data_dir: temp
 
@@ -100,9 +99,6 @@ validation:
     - no_race_grade_ground_condition
 
 artifacts:
-  phase1:
-    diagnostics: data/processed/phase1_diagnostics.json
-    acceptance_report: data/processed/acceptance_report.json
   phase2:
     predictions: data/processed/predictions_place.csv
     model_compare_summary: data/processed/model_compare_summary.csv
