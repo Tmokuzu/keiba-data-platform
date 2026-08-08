@@ -27,6 +27,9 @@ uv run python main.py validate
 
 CSVヘッダーは `sql/001_create_raw_tables.sql` の定義に合わせます。
 
+WindowsのJV-Linkから直接取り込む場合は、同梱の `jvlink_importer/` を使います。取込ツールも
+raw層へ書き込むため、Python CLIでは続けて `sync-ended` を実行してください。
+
 ## 生成ファイル
 
 次のファイルはローカル成果物であり、Gitへコミットしません。

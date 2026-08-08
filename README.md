@@ -17,7 +17,9 @@ ended raw CSV -> raw tables -> sync-ended -> core tables -> ai views
 - `ai` 層: 学習・バックテストが読む安定したビュー
 - `temp` ディレクトリ: 当日予測用の未確定データをParquetで一時保存する場所
 
-Phase1ではJV-Link本接続は未実装です。`src/ingestion/jvlink_placeholder.py` に将来差し替え用の入口だけを置いています。
+Windows上のJV-Link連携は `jvlink_importer/` に同梱しています。取込ツールはJRA-VANデータを
+raw層へ保存し、Python CLIの `sync-ended` が確定済みレースだけをcore層へ同期します。
+セットアップと実行方法は [jvlink_importer/README.md](jvlink_importer/README.md) を参照してください。
 
 ## ドキュメント
 

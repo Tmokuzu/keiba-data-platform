@@ -31,6 +31,10 @@ uv run python main.py init-db
 
 ## 1. 確定済みデータを取り込む
 
+JRA-VANから直接取り込む場合は、Windowsで `jvlink_importer/` を実行します。詳細は
+[JV-Link Importer](../../jvlink_importer/README.md) を参照してください。取込先はraw層であり、
+次の `sync-ended` 以降の手順はCSV取込の場合と共通です。
+
 `data/raw/` に、少なくとも次のCSVを置きます。CSVヘッダーは `sql/001_create_raw_tables.sql` の列名に合わせます。
 
 - `races.csv`

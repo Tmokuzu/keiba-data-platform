@@ -7,3 +7,8 @@ logs/data_quality_report.json
 /data/postgres/
 /data/processed/
 /models/
+/jvlink_importer/bin/
+/jvlink_importer/obj/
+/jvlink_importer/appsettings.json
+/jvlink_importer/raw_*.txt
+/jvlink_importer/type_counts.csv
