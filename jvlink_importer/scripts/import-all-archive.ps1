@@ -14,14 +14,14 @@ Write-Host "JV-Link archive import starts from $From"
 Write-Host "All received records are preserved in raw_jv_records, including unsupported types."
 
 foreach ($spec in $specs) {
-    Write-Host "`n=== $spec: record-type scan ==="
+    Write-Host "`n=== ${spec}: record-type scan ==="
     dotnet run -- scan-types-setup --from $From --data-spec $spec --max-read 100000
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "$spec scan failed or is unavailable for this contract; continuing."
         continue
     }
 
-    Write-Host "=== $spec: archive import ==="
+    Write-Host "=== ${spec}: archive import ==="
     dotnet run -- import-setup --from $From --data-spec $spec --progress-every $ProgressEvery
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "$spec import failed; inspect its log and rerun this data spec separately."
