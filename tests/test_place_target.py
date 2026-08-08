@@ -3,7 +3,7 @@ import unittest
 
 import pandas as pd
 
-from src.models.common import make_feature_spec, place_target, prepare_model_frame, prepare_prediction_frame
+from src.models.common import make_feature_spec, place_target, prepare_model_frame, prepare_prediction_frame, split_by_time
 
 
 class PlaceTargetTests(unittest.TestCase):
@@ -133,3 +133,22 @@ class PlaceTargetTests(unittest.TestCase):
 
         self.assertNotIn("horse_id", standard.feature_cols)
         self.assertIn("horse_id", catboost.feature_cols)
+
+    def test_time_split_keeps_each_calendar_date_in_one_partition(self) -> None:
+        frame = pd.DataFrame(
+            [
+                {"race_id": "a", "race_date": "2026-01-01"},
+                {"race_id": "b", "race_date": "2026-01-01"},
+                {"race_id": "c", "race_date": "2026-01-02"},
+                {"race_id": "d", "race_date": "2026-01-03"},
+                {"race_id": "e", "race_date": "2026-01-04"},
+                {"race_id": "f", "race_date": "2026-01-05"},
+            ]
+        )
+
+        split = split_by_time(frame, valid_size=0.2, test_size=0.2)
+        partitions = [set(part.race_date.tolist()) for part in [split.train, split.valid, split.test]]
+
+        self.assertTrue(partitions[0].isdisjoint(partitions[1]))
+        self.assertTrue(partitions[0].isdisjoint(partitions[2]))
+        self.assertTrue(partitions[1].isdisjoint(partitions[2]))

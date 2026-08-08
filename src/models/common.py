@@ -358,21 +358,25 @@ def make_feature_spec(frame: pd.DataFrame, include_high_cardinality_ids: bool = 
 
 
 def split_by_time(frame: pd.DataFrame, valid_size: float = 0.2, test_size: float = 0.2) -> DatasetSplit:
-    races = frame[["race_id", "race_date"]].drop_duplicates().sort_values(["race_date", "race_id"])
-    if len(races) < 3:
-        raise ValueError("At least three races are required for train/valid/test splitting.")
-    n_races = len(races)
-    test_n = max(1, int(round(n_races * test_size)))
-    valid_n = max(1, int(round(n_races * valid_size)))
-    if n_races - test_n - valid_n < 1:
+    # Split by calendar date rather than race ID. This prevents races held on
+    # the same day from being placed on different sides of an evaluation
+    # boundary, which would otherwise make the temporal holdout ambiguous.
+    dates = pd.Series(pd.to_datetime(frame["race_date"], errors="coerce").dropna().unique()).sort_values()
+    if len(dates) < 3:
+        raise ValueError("At least three distinct race dates are required for train/valid/test splitting.")
+    n_dates = len(dates)
+    test_n = max(1, int(round(n_dates * test_size)))
+    valid_n = max(1, int(round(n_dates * valid_size)))
+    if n_dates - test_n - valid_n < 1:
         valid_n = 1
         test_n = 1
-    train_ids = set(races.iloc[: n_races - valid_n - test_n]["race_id"])
-    valid_ids = set(races.iloc[n_races - valid_n - test_n : n_races - test_n]["race_id"])
-    test_ids = set(races.iloc[n_races - test_n :]["race_id"])
-    train = frame[frame["race_id"].isin(train_ids)].copy()
-    valid = frame[frame["race_id"].isin(valid_ids)].copy()
-    test = frame[frame["race_id"].isin(test_ids)].copy()
+    train_dates = set(dates.iloc[: n_dates - valid_n - test_n])
+    valid_dates = set(dates.iloc[n_dates - valid_n - test_n : n_dates - test_n])
+    test_dates = set(dates.iloc[n_dates - test_n :])
+    normalized_dates = pd.to_datetime(frame["race_date"], errors="coerce")
+    train = frame[normalized_dates.isin(train_dates)].copy()
+    valid = frame[normalized_dates.isin(valid_dates)].copy()
+    test = frame[normalized_dates.isin(test_dates)].copy()
     for part in [train, valid, test]:
         part.attrs.update(frame.attrs)
     return DatasetSplit(train=train, valid=valid, test=test)
