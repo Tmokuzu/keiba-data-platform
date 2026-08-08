@@ -90,15 +90,15 @@ dotnet run -- scan-types-setup --from 20230101000000 --data-spec SNPN --max-read
 dotnet run -- import-setup --from 20230101000000 --data-spec SNPN --max-read 20000 --progress-every 1000
 ```
 
-追加DataSpecを一括でアーカイブする場合は、Windows PowerShellで次を実行します。
-`SNPN` 等の補てん系データは2023-08-08以降を既定にしています。`RACE` もrawアーカイブへ
-再取得する場合だけ `-IncludeRace` を付けてください。
+取得可能な全期間のDataSpecを一括でアーカイブする場合は、Windows PowerShellで次を実行します。
+既定は1999-06-01以降で、`RACE` も含めます。提供開始前・契約対象外の種別は警告を出して次へ
+進みます。既に正規化済みのRACEを再取得しても、rawアーカイブはハッシュで重複保存しません。
 
 ```powershell
 cd jvlink_importer
 .\scripts\import-all-archive.ps1
-# RACEも含める場合
-.\scripts\import-all-archive.ps1 -IncludeRace -From 20230101000000
+# RACEを飛ばして追加種別だけ取得する場合
+.\scripts\import-all-archive.ps1 -SkipRace
 ```
 
 JRA-VANの契約・提供期間により取得可能範囲は異なります。特に時系列オッズは、実際にレース前に

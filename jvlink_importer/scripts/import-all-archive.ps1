@@ -1,13 +1,13 @@
 param(
-    [string]$From = "20230808000000",
+    [string]$From = "19990601000000",
     [int]$ProgressEvery = 1000,
-    [switch]$IncludeRace
+    [switch]$SkipRace
 )
 
 $ErrorActionPreference = "Continue"
-$specs = @("DIFN", "SNPN", "SLOP", "WOOD", "BLOD", "COMM", "MING")
-if ($IncludeRace) {
-    $specs = @("RACE") + $specs
+$specs = @("RACE", "DIFN", "SNPN", "SLOP", "WOOD", "BLOD", "COMM", "MING")
+if ($SkipRace) {
+    $specs = $specs | Where-Object { $_ -ne "RACE" }
 }
 
 Write-Host "JV-Link archive import starts from $From"
