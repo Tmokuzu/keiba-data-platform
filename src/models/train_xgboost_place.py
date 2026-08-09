@@ -17,7 +17,7 @@ from src.models.common import (
     load_config,
     make_feature_spec,
     make_preprocessor,
-    prepare_model_frame,
+    prepare_model_frame_if_needed,
     save_artifact,
     save_json,
     split_by_time,
@@ -43,7 +43,7 @@ def train_xgboost_place(
     ensure_dirs()
     config = load_config()
     raw = load_ai_race_entries() if frame is None else frame
-    data = prepare_model_frame(raw, excluded_feature_groups)
+    data = prepare_model_frame_if_needed(raw, excluded_feature_groups)
     split = split_override or split_by_time(data, config["modeling"]["valid_size"], config["modeling"]["test_size"])
     spec = make_feature_spec(split.train)
     preprocessor = make_preprocessor(spec)

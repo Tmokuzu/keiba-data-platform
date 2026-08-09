@@ -179,7 +179,19 @@ def prepare_model_frame(
 
     frame = _add_shifted_history_features(frame)
 
-    return frame.sort_values(["race_date", "race_id", "horse_no"], kind="mergesort").reset_index(drop=True)
+    prepared = frame.sort_values(["race_date", "race_id", "horse_no"], kind="mergesort").reset_index(drop=True)
+    prepared.attrs["prepared_model_frame"] = True
+    return prepared
+
+
+def prepare_model_frame_if_needed(
+    frame: pd.DataFrame,
+    excluded_feature_groups: list[str] | None = None,
+) -> pd.DataFrame:
+    """Reuse a cached prepared frame without recalculating historical values."""
+    if frame.attrs.get("prepared_model_frame") and not excluded_feature_groups:
+        return frame
+    return prepare_model_frame(frame, excluded_feature_groups)
 
 
 def prepare_prediction_frame(

@@ -36,6 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
         "build-core",
         "build-ai-views",
         "normalize-jv-snapshots",
+        "prepare-training-frame",
         "validate",
         "check-odds-snapshots",
         "predict-today",
@@ -63,6 +64,8 @@ def build_parser() -> argparse.ArgumentParser:
         if name == "predict-today":
             command_parser.add_argument("--date", help="Race date in YYYY-MM-DD format")
             command_parser.add_argument("--today-csv", required=True, help="Unconfirmed race entry CSV")
+        if name == "train-all-models":
+            command_parser.add_argument("--use-prepared-frame", action="store_true", help="Reuse data/processed/training_frame.joblib")
     return parser
 
 
@@ -99,6 +102,10 @@ def main() -> None:
         from src.pipelines.normalize_jv_snapshots import normalize_ck_snapshots
 
         normalize_ck_snapshots()
+    elif args.command == "prepare-training-frame":
+        from src.models.train_all import prepare_training_frame
+
+        prepare_training_frame()
     elif args.command == "validate":
         from src.validators.data_quality import run_data_quality_checks
 
@@ -128,7 +135,7 @@ def main() -> None:
     elif args.command == "train-all-models":
         from src.models.train_all import train_all_models
 
-        train_all_models()
+        train_all_models(args.use_prepared_frame)
     elif args.command == "predict":
         from src.models.predict import predict_lgbm
 

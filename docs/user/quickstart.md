@@ -62,6 +62,14 @@ uv run python main.py safe-agent
 uv run python main.py backtest-safe-agent
 ```
 
+大量データで前処理と学習を分けたい場合は、前処理結果を一時キャッシュしてから実行できます。
+このキャッシュと学習済みモデルはGit管理されません。データを再取込した場合はキャッシュを作り直します。
+
+```bash
+uv run python main.py prepare-training-frame
+uv run python main.py train-all-models --use-prepared-frame
+```
+
 検証レポート:
 
 ```bash
