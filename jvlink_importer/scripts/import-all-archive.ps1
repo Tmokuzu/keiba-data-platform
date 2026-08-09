@@ -6,7 +6,7 @@ param(
 )
 
 $ErrorActionPreference = "Continue"
-$specs = @("RACE", "DIFN", "SNPN", "SLOP", "WOOD", "BLOD", "COMM", "MING")
+$specs = @("RACE", "DIFN", "SNPN", "SLOP", "WOOD", "BLDN", "COMM", "MING")
 if ($SkipRace) {
     $specs = $specs | Where-Object { $_ -ne "RACE" }
 }
