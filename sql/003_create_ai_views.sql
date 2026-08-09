@@ -36,6 +36,20 @@ SELECT
     e.odds_place_min,
     e.odds_place_max,
     e.popularity,
+    -- CK is a JV-Link snapshot made available for this exact race. Keep the
+    -- date predicate as a schema-level guard against accidental future data.
+    ck.flat_prize_yen AS ck_flat_prize_yen,
+    ck.central_runs AS ck_central_runs,
+    ck.central_wins AS ck_central_wins,
+    ck.central_seconds AS ck_central_seconds,
+    ck.central_thirds AS ck_central_thirds,
+    CASE
+        WHEN ck.central_runs > 0 THEN ck.central_wins::DOUBLE PRECISION / ck.central_runs
+    END AS ck_central_win_rate,
+    CASE
+        WHEN ck.central_runs > 0 THEN
+            (ck.central_wins + ck.central_seconds + ck.central_thirds)::DOUBLE PRECISION / ck.central_runs
+    END AS ck_central_place_rate,
     res.finish_position,
     res.finish_time,
     res.margin,
@@ -55,6 +69,10 @@ JOIN entries e
 LEFT JOIN results res
     ON e.race_id = res.race_id
     AND e.horse_id = res.horse_id
+LEFT JOIN jv_ck_snapshots ck
+    ON e.race_id = ck.race_id
+    AND e.horse_id = ck.horse_id
+    AND ck.snapshot_date <= r.race_date
 LEFT JOIN LATERAL (
     SELECT p.payout
     FROM payouts p

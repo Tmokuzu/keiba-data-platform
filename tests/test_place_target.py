@@ -73,18 +73,21 @@ class PlaceTargetTests(unittest.TestCase):
                     "race_id": "race-1", "race_date": "2026-01-01", "horse_id": "horse-a",
                     "horse_no": 1, "field_size": 8, "finish_position": 2, "target_place": 1,
                     "course": "東京", "surface": "芝", "ground_condition": "良", "distance": 1600,
+                    "finish_time": "1340", "corner_order": "02-02-02-02",
                     "odds_place_min": 2.0,
                 },
                 {
                     "race_id": "race-2", "race_date": "2026-02-01", "horse_id": "horse-a",
                     "horse_no": 1, "field_size": 8, "finish_position": 4, "target_place": 0,
                     "course": "東京", "surface": "芝", "ground_condition": "良", "distance": 1600,
+                    "finish_time": "1320", "corner_order": "01-01-01-01",
                     "odds_place_min": 3.0,
                 },
                 {
                     "race_id": "race-3", "race_date": "2026-03-01", "horse_id": "horse-a",
                     "horse_no": 1, "field_size": 8, "finish_position": 1, "target_place": 1,
                     "course": "東京", "surface": "芝", "ground_condition": "良", "distance": 1600,
+                    "finish_time": "1300", "corner_order": "03-03-03-03",
                     "odds_place_min": 2.5,
                 },
             ]
@@ -97,6 +100,8 @@ class PlaceTargetTests(unittest.TestCase):
         self.assertEqual(third["hist_course_place_rate"], 0.5)
         self.assertEqual(third["hist_distance_bucket_place_rate"], 0.5)
         self.assertEqual(third["hist_days_since_last_race"], 28)
+        self.assertAlmostEqual(third["hist_recent3_speed_mps"], (1600 / 94 + 1600 / 92) / 2)
+        self.assertAlmostEqual(third["hist_avg_early_position_ratio"], (2 / 8 + 1 / 8) / 2)
 
     def test_market_features_are_normalized_within_each_race(self) -> None:
         frame = pd.DataFrame(
@@ -133,6 +138,19 @@ class PlaceTargetTests(unittest.TestCase):
 
         self.assertNotIn("horse_id", standard.feature_cols)
         self.assertIn("horse_id", catboost.feature_cols)
+
+    def test_ck_snapshot_features_are_available_and_ablatable(self) -> None:
+        frame = pd.DataFrame(
+            [{
+                "horse_id": "horse-a", "target_place": 1,
+                "ck_flat_prize_yen": 12_000_000, "ck_central_runs": 8,
+                "ck_central_win_rate": 0.25, "ck_central_place_rate": 0.5,
+            }]
+        )
+
+        self.assertIn("ck_central_place_rate", make_feature_spec(frame).feature_cols)
+        frame.attrs["excluded_feature_groups"] = ["no_jv_ck"]
+        self.assertNotIn("ck_central_place_rate", make_feature_spec(frame).feature_cols)
 
     def test_time_split_keeps_each_calendar_date_in_one_partition(self) -> None:
         frame = pd.DataFrame(

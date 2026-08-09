@@ -227,8 +227,52 @@ def _add_shifted_history_features(frame: pd.DataFrame) -> pd.DataFrame:
         last_3f = pd.to_numeric(frame["last_3f"], errors="coerce")
         frame["hist_avg_last_3f"] = _prior_group_mean(last_3f, frame["horse_id"])
         frame["hist_recent3_avg_last_3f"] = _prior_rolling_mean(last_3f, frame["horse_id"], 3)
+    _add_performance_and_running_style_features(frame)
     frame["hist_days_since_last_race"] = frame.groupby("horse_id")["race_date"].diff().dt.days
     return frame
+
+
+def _add_performance_and_running_style_features(frame: pd.DataFrame) -> None:
+    """Add prior-only time and position features from finished historical races.
+
+    JV results represent times as either ``MSSd`` (for example ``1272`` for
+    1:27.2) or the older ``M:SS.d`` notation.  Current-race results are always
+    shifted away before use, so these outcomes cannot leak into that race.
+    """
+    if "finish_time" in frame.columns and "distance" in frame.columns:
+        seconds = _finish_time_to_seconds(frame["finish_time"])
+        distance = pd.to_numeric(frame["distance"], errors="coerce")
+        speed = distance / seconds.replace(0, np.nan)
+        frame["hist_avg_speed_mps"] = _prior_group_mean(speed, frame["horse_id"])
+        frame["hist_recent3_speed_mps"] = _prior_rolling_mean(speed, frame["horse_id"], 3)
+        frame["hist_recent5_speed_mps"] = _prior_rolling_mean(speed, frame["horse_id"], 5)
+        if "course" in frame.columns and "surface" in frame.columns:
+            groups = [frame["horse_id"], frame["course"], frame["surface"], distance]
+            frame["hist_course_distance_speed_mps"] = _prior_group_mean(speed, groups)
+
+    if "corner_order" not in frame.columns or "field_size" not in frame.columns:
+        return
+    corner_text = frame["corner_order"].astype("string")
+    first = pd.to_numeric(corner_text.str.extract(r"^(\d+)", expand=False), errors="coerce")
+    final = pd.to_numeric(corner_text.str.extract(r"(\d+)$", expand=False), errors="coerce")
+    field_size = pd.to_numeric(frame["field_size"], errors="coerce").replace(0, np.nan)
+    early_ratio = first / field_size
+    final_ratio = final / field_size
+    frame["hist_avg_early_position_ratio"] = _prior_group_mean(early_ratio, frame["horse_id"])
+    frame["hist_avg_final_corner_ratio"] = _prior_group_mean(final_ratio, frame["horse_id"])
+    frame["hist_recent3_early_position_ratio"] = _prior_rolling_mean(early_ratio, frame["horse_id"], 3)
+    front_runner = (early_ratio <= 0.25).where(early_ratio.notna())
+    frame["hist_front_runner_rate"] = _prior_group_mean(front_runner, frame["horse_id"])
+
+
+def _finish_time_to_seconds(values: pd.Series) -> pd.Series:
+    """Parse supported JV finish-time formats without coercing invalid values."""
+    text_values = values.astype("string").str.strip()
+    compact = pd.to_numeric(text_values.where(text_values.str.fullmatch(r"\d{4}")), errors="coerce")
+    compact_seconds = (compact // 1000) * 60 + (compact % 1000) / 10
+    legacy = text_values.str.extract(r"^(\d+):(\d{2})\.(\d)$")
+    legacy_seconds = pd.to_numeric(legacy[0], errors="coerce") * 60 + pd.to_numeric(legacy[1], errors="coerce") + pd.to_numeric(legacy[2], errors="coerce") / 10
+    return compact_seconds.fillna(legacy_seconds)
 
 
 def _add_market_features(frame: pd.DataFrame) -> pd.DataFrame:
@@ -323,6 +367,8 @@ def make_feature_spec(frame: pd.DataFrame, include_high_cardinality_ids: bool = 
         excluded.update([c for c in frame.columns if c.startswith("market_")])
     if "no_recent_form" in ablations:
         excluded.update([c for c in frame.columns if c.startswith("hist_")])
+    if "no_jv_ck" in ablations:
+        excluded.update([c for c in frame.columns if c.startswith("ck_")])
     if "no_jockey_trainer_id" in ablations:
         excluded.update(["jockey_id", "trainer_id", "jockey_name", "trainer_name"])
     if "no_suitability" in ablations:
