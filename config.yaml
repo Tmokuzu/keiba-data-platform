@@ -102,6 +102,7 @@ validation:
         test_end: 2025
   ablation_sets:
     - all_features
+    - no_jv_ck
     - no_jockey_trainer_id
     - no_odds
     - no_market_features

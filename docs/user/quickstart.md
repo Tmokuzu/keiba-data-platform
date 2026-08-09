@@ -41,6 +41,16 @@ uv run python main.py validate
 `sync-ended` がcore層へ送るのは、終了・確定済みレースだけです。当日・未確定データはraw層または
 `temp/` に置き、core DBには混在させません。
 
+JV-Link の追加アーカイブ（`SNPN` の CK を含む）を取り込んだ後は、学習前に次を一度実行します。
+
+```bash
+uv run python main.py init-db
+uv run python main.py normalize-jv-snapshots
+```
+
+CK は各レース時点の馬の中央実績・賞金を追加する特徴量です。取り込めていない期間は欠損のまま扱い、
+将来の成績で補いません。
+
 ## Phase 2の学習と予測
 
 Train all place models and build ensemble predictions:

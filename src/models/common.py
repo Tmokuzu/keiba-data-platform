@@ -211,13 +211,7 @@ def _add_shifted_history_features(frame: pd.DataFrame) -> pd.DataFrame:
         finish = pd.to_numeric(frame["finish_position"], errors="coerce")
         frame["hist_runs"] = frame.groupby("horse_id").cumcount()
         frame["hist_avg_finish"] = _prior_group_mean(finish, frame["horse_id"])
-        place_hits = pd.Series(
-            [
-                place_target(position, field_size)
-                for position, field_size in zip(finish, frame["field_size"], strict=False)
-            ],
-            index=frame.index,
-        )
+        place_hits = _place_targets_series(finish, frame["field_size"])
         frame["hist_place_rate"] = _prior_group_mean(place_hits, frame["horse_id"])
         frame["hist_recent3_place_rate"] = _prior_rolling_mean(place_hits, frame["horse_id"], 3)
         frame["hist_recent5_place_rate"] = _prior_rolling_mean(place_hits, frame["horse_id"], 5)
@@ -261,7 +255,7 @@ def _add_performance_and_running_style_features(frame: pd.DataFrame) -> None:
     frame["hist_avg_early_position_ratio"] = _prior_group_mean(early_ratio, frame["horse_id"])
     frame["hist_avg_final_corner_ratio"] = _prior_group_mean(final_ratio, frame["horse_id"])
     frame["hist_recent3_early_position_ratio"] = _prior_rolling_mean(early_ratio, frame["horse_id"], 3)
-    front_runner = (early_ratio <= 0.25).where(early_ratio.notna())
+    front_runner = (early_ratio <= 0.25).where(early_ratio.notna()).astype(float)
     frame["hist_front_runner_rate"] = _prior_group_mean(front_runner, frame["horse_id"])
 
 
@@ -273,6 +267,16 @@ def _finish_time_to_seconds(values: pd.Series) -> pd.Series:
     legacy = text_values.str.extract(r"^(\d+):(\d{2})\.(\d)$")
     legacy_seconds = pd.to_numeric(legacy[0], errors="coerce") * 60 + pd.to_numeric(legacy[1], errors="coerce") + pd.to_numeric(legacy[2], errors="coerce") / 10
     return compact_seconds.fillna(legacy_seconds)
+
+
+def _place_targets_series(finish: pd.Series, field_size: pd.Series) -> pd.Series:
+    """Vectorized JRA place target used for large historical feature frames."""
+    finish_numeric = pd.to_numeric(finish, errors="coerce")
+    field_numeric = pd.to_numeric(field_size, errors="coerce")
+    eligible = field_numeric >= 5
+    slots = np.where(field_numeric >= 8, 3, 2)
+    values = np.where(eligible & finish_numeric.notna(), (finish_numeric <= slots).astype(float), np.nan)
+    return pd.Series(values, index=finish.index)
 
 
 def _add_market_features(frame: pd.DataFrame) -> pd.DataFrame:
