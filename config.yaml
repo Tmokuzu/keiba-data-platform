@@ -46,6 +46,9 @@ modeling:
       field_size_5_to_7: 2
 
 data:
+  # 過去アーカイブの最終オッズは予測時点が検証できないため、学習特徴量には使わない。
+  # 時刻付きの締切前オッズを継続収集・監査できるようになった場合のみ true を検討する。
+  historical_market_odds_safe: false
   # 発走何分前までの複勝オッズを、事前オッズとして有効とみなすか。
   odds_snapshot_cutoff_minutes_before_start: 1
 

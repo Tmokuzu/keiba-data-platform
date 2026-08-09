@@ -73,6 +73,10 @@ def load_config() -> dict[str, Any]:
     config["ensemble"].setdefault("weights", {"lgbm": 0.34, "catboost": 0.33, "xgboost": 0.33})
     config.setdefault("safe_agent", {})
     config["safe_agent"].setdefault("max_model_uncertainty", 0.10)
+    config.setdefault("data", {})
+    # Historical archive odds are commonly final odds retrieved after the race.
+    # They cannot be used as pre-race model inputs without a timestamp audit.
+    config["data"].setdefault("historical_market_odds_safe", False)
     return config
 
 
@@ -376,6 +380,9 @@ def make_feature_spec(frame: pd.DataFrame, include_high_cardinality_ids: bool = 
         id_cols.append("horse_id")
     excluded.update(id_cols)
     ablations = set(frame.attrs.get("excluded_feature_groups", []))
+    if not load_config()["data"].get("historical_market_odds_safe", False):
+        excluded.update(["odds_win", "odds_place_min", "odds_place_max", "popularity"])
+        excluded.update([c for c in frame.columns if c.startswith("market_")])
     if "no_odds" in ablations:
         excluded.update(["odds_win", "odds_place_min", "odds_place_max", "popularity"])
         excluded.update([c for c in frame.columns if c.startswith("market_")])

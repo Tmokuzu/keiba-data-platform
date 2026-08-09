@@ -163,6 +163,14 @@ class PlaceTargetTests(unittest.TestCase):
         frame.attrs["excluded_feature_groups"] = ["no_jv_ck"]
         self.assertNotIn("ck_central_place_rate", make_feature_spec(frame).feature_cols)
 
+    def test_historical_odds_are_not_model_features_without_timestamp_audit(self) -> None:
+        frame = pd.DataFrame(
+            [{"horse_id": "horse-a", "target_place": 1, "odds_place_min": 2.0, "market_place_prob": 0.5}]
+        )
+        spec = make_feature_spec(frame)
+        self.assertNotIn("odds_place_min", spec.feature_cols)
+        self.assertNotIn("market_place_prob", spec.feature_cols)
+
     def test_time_split_keeps_each_calendar_date_in_one_partition(self) -> None:
         frame = pd.DataFrame(
             [
