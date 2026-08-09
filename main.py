@@ -35,6 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
         "sync-ended",
         "build-core",
         "build-ai-views",
+        "normalize-jv-snapshots",
         "validate",
         "check-odds-snapshots",
         "predict-today",
@@ -94,6 +95,10 @@ def main() -> None:
         from src.pipelines.build_ai_views import build_ai_views
 
         build_ai_views()
+    elif args.command == "normalize-jv-snapshots":
+        from src.pipelines.normalize_jv_snapshots import normalize_ck_snapshots
+
+        normalize_ck_snapshots()
     elif args.command == "validate":
         from src.validators.data_quality import run_data_quality_checks
 
