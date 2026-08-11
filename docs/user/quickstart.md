@@ -46,10 +46,14 @@ JV-Link の追加アーカイブ（`SNPN` の CK を含む）を取り込んだ�
 ```bash
 uv run python main.py init-db
 uv run python main.py normalize-jv-snapshots
+uv run python main.py normalize-jv-training
 ```
 
 CK は各レース時点の馬の中央実績・賞金を追加する特徴量です。取り込めていない期間は欠損のまま扱い、
 将来の成績で補いません。
+
+`normalize-jv-training` はJV-Linkの坂路（HC）・ウッドチップ（WC）調教を正規化します。調教日が
+対象レース日より前の記録だけを特徴量化します。
 
 ## Phase 2の学習と予測
 

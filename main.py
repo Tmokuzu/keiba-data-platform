@@ -36,6 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
         "build-core",
         "build-ai-views",
         "normalize-jv-snapshots",
+        "normalize-jv-training",
+        "build-jv-training-features",
         "prepare-training-frame",
         "validate",
         "check-odds-snapshots",
@@ -102,6 +104,14 @@ def main() -> None:
         from src.pipelines.normalize_jv_snapshots import normalize_ck_snapshots
 
         normalize_ck_snapshots()
+    elif args.command == "normalize-jv-training":
+        from src.pipelines.normalize_jv_snapshots import normalize_training_sessions
+
+        normalize_training_sessions()
+    elif args.command == "build-jv-training-features":
+        from src.pipelines.normalize_jv_snapshots import build_race_training_features
+
+        build_race_training_features()
     elif args.command == "prepare-training-frame":
         from src.models.train_all import prepare_training_frame
 

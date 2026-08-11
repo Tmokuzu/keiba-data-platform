@@ -19,6 +19,7 @@ logger = get_logger(__name__)
 ABLATIONS = {
     "all_features": [],
     "no_jv_ck": ["no_jv_ck"],
+    "no_training": ["no_training"],
     "no_jockey_trainer_id": ["no_jockey_trainer_id"],
     "no_odds": ["no_odds"],
     "no_market_features": ["no_market_features"],

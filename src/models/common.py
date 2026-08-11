@@ -392,6 +392,8 @@ def make_feature_spec(frame: pd.DataFrame, include_high_cardinality_ids: bool = 
         excluded.update([c for c in frame.columns if c.startswith("hist_")])
     if "no_jv_ck" in ablations:
         excluded.update([c for c in frame.columns if c.startswith("ck_")])
+    if "no_training" in ablations:
+        excluded.update([c for c in frame.columns if c.startswith("training_")])
     if "no_jockey_trainer_id" in ablations:
         excluded.update(["jockey_id", "trainer_id", "jockey_name", "trainer_name"])
     if "no_suitability" in ablations:

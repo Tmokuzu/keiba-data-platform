@@ -50,6 +50,14 @@ SELECT
         WHEN ck.central_runs > 0 THEN
             (ck.central_wins + ck.central_seconds + ck.central_thirds)::DOUBLE PRECISION / ck.central_runs
     END AS ck_central_place_rate,
+    training.sessions_7d AS training_sessions_7d,
+    training.sessions_14d AS training_sessions_14d,
+    training.days_since_latest AS training_days_since_latest,
+    training.latest_4f_seconds AS training_latest_4f_seconds,
+    training.latest_3f_seconds AS training_latest_3f_seconds,
+    training.latest_1f_seconds AS training_latest_1f_seconds,
+    training.best_3f_14d_seconds AS training_best_3f_14d_seconds,
+    training.latest_training_type AS training_latest_type,
     res.finish_position,
     res.finish_time,
     res.margin,
@@ -73,6 +81,9 @@ LEFT JOIN jv_ck_snapshots ck
     ON e.race_id = ck.race_id
     AND e.horse_id = ck.horse_id
     AND ck.snapshot_date <= r.race_date
+LEFT JOIN jv_race_training_features training
+    ON e.race_id = training.race_id
+    AND e.horse_id = training.horse_id
 LEFT JOIN LATERAL (
     SELECT p.payout
     FROM payouts p
