@@ -1,5 +1,11 @@
 # 設定
 
+## 本番学習から除外する特徴量
+
+`modeling.excluded_feature_groups` は、時系列アブレーションで寄与が確認できなかった特徴量群を
+本番モデルから外します。現在は全履歴HC/WC調教を `no_training` として除外しています。生データと
+レース別集計は保持されるため、特徴量を改善した後にこの設定を外して再評価できます。
+
 実行時設定は `config.yaml` です。初期化には `config.example.yaml` を使います。
 
 ## PostgreSQL接続

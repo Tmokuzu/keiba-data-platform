@@ -29,6 +29,9 @@ modeling:
   test_size: 0.2
   valid_size: 0.2
   min_train_rows: 50
+  # 時系列アブレーションで寄与しなかった特徴量群は本番学習から除外する。
+  excluded_feature_groups:
+    - no_training
   # auto: GPUを試し、未対応時はCPUへ安全にフォールバック。cpu / gpu も指定可能。
   accelerator: auto
   # NVIDIA GPU番号。複数はCatBoostで "0:1"、XGBoost/LightGBMでは先頭を使う。
