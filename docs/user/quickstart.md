@@ -71,6 +71,9 @@ bash scripts/build-training-feature-history.sh
 途中で失敗した場合は、失敗した月だけ `build-jv-training-features --from-date ... --to-date ...` を
 再実行してください。完了済み月を再実行しても安全です。
 
+アーカイブ取込後に調教特徴量の実装が更新された場合も、このスクリプトを再実行してください。調教の
+実施日がレース日より前のものだけを再集計します。
+
 ## Phase 2の学習と予測
 
 Train all place models and build ensemble predictions:

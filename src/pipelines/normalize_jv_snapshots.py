@@ -73,8 +73,9 @@ def normalize_ck_snapshots() -> None:
 def normalize_training_sessions() -> None:
     """Normalize HC/WC training records using the official fixed-width layout.
 
-    Training dates are intentionally retained separately from creation dates;
-    race features must only select records strictly before the race date.
+    The source creation date is retained for audit. Archive downloads may stamp
+    it with the archive release date, so race features use the actual training
+    date (not creation date) as the availability boundary.
     """
     sql = """
     INSERT INTO jv_training_sessions (
@@ -133,7 +134,6 @@ def build_race_training_features(start_date: str = "2003-01-01", end_date: str |
         FROM jv_training_sessions t
         WHERE t.horse_id = e.horse_id
           AND t.training_date < r.race_date
-          AND t.created_date < r.race_date
           AND t.training_date >= r.race_date - INTERVAL '14 days'
     ) stats ON TRUE
     LEFT JOIN LATERAL (
@@ -143,7 +143,6 @@ def build_race_training_features(start_date: str = "2003-01-01", end_date: str |
         FROM jv_training_sessions t
         WHERE t.horse_id = e.horse_id
           AND t.training_date < r.race_date
-          AND t.created_date < r.race_date
         ORDER BY t.training_date DESC, t.created_date DESC
         LIMIT 1
     ) latest ON TRUE
