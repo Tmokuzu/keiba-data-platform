@@ -4,6 +4,7 @@ import unittest
 import pandas as pd
 
 from src.models.common import _place_targets_series, make_feature_spec, place_target, prepare_model_frame, prepare_prediction_frame, split_by_time
+from src.validation.ablation import ABLATIONS
 
 
 class PlaceTargetTests(unittest.TestCase):
@@ -34,6 +35,9 @@ class PlaceTargetTests(unittest.TestCase):
                 self.assertTrue(math.isnan(value))
             else:
                 self.assertEqual(value, expected_value)
+
+    def test_training_ablation_is_registered(self) -> None:
+        self.assertEqual(ABLATIONS["no_training"], ["no_training"])
 
     def test_prediction_rows_use_confirmed_history_without_becoming_training_rows(self) -> None:
         history = pd.DataFrame(

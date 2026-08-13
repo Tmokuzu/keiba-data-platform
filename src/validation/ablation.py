@@ -6,7 +6,7 @@ import pandas as pd
 
 from src.agents.safe_agent import apply_safe_agent
 from src.backtesting.metrics import evaluate_predictions
-from src.models.common import PROCESSED_DIR, load_ai_race_entries
+from src.models.common import MODELS_DIR, PROCESSED_DIR, load_ai_race_entries
 from src.models.predict import _add_value_columns, _predict_with_artifact
 from src.models.train_place_model import train_lightgbm_place
 from src.validation.model_compare import _summary_row
@@ -33,7 +33,13 @@ def run_ablation(output_path: Path | None = None) -> pd.DataFrame:
     raw = load_ai_race_entries()
     rows: list[dict] = []
     for name, groups in ABLATIONS.items():
-        artifact = train_lightgbm_place(raw, excluded_feature_groups=groups)
+        # Ablations are experiments: never overwrite the production artifact.
+        artifact = train_lightgbm_place(
+            raw,
+            output_model_path=MODELS_DIR / "ablation" / f"{name}_lgbm_place_model.pkl",
+            output_metrics_path=MODELS_DIR / "ablation" / f"{name}_lgbm_place_metrics.json",
+            excluded_feature_groups=groups,
+        )
         frame = artifact_test_frame(raw, groups)
         frame["place_prob_final"] = _predict_with_artifact(artifact, frame, calibrated=True)
         frame["model_uncertainty"] = 0.0
