@@ -3,7 +3,7 @@ import unittest
 
 import pandas as pd
 
-from src.models.common import _place_targets_series, make_feature_spec, place_target, prepare_model_frame, prepare_prediction_frame, split_by_time
+from src.models.common import _place_targets_series, make_feature_spec, place_target, prepare_model_frame, prepare_model_frame_if_needed, prepare_prediction_frame, split_by_time
 from src.validation.ablation import ABLATIONS
 
 
@@ -38,6 +38,13 @@ class PlaceTargetTests(unittest.TestCase):
 
     def test_training_ablation_is_registered(self) -> None:
         self.assertEqual(ABLATIONS["no_training"], ["no_training"])
+
+    def test_prepared_frame_reuses_history_for_ablation(self) -> None:
+        frame = pd.DataFrame([{"horse_id": "horse-a", "target_place": 1, "hist_runs": 3, "training_sessions_14d": 2}])
+        frame.attrs["prepared_model_frame"] = True
+        result = prepare_model_frame_if_needed(frame, ["no_training"])
+        self.assertEqual(result.attrs["excluded_feature_groups"], ["no_training"])
+        self.assertEqual(result["hist_runs"].iloc[0], 3)
 
     def test_prediction_rows_use_confirmed_history_without_becoming_training_rows(self) -> None:
         history = pd.DataFrame(

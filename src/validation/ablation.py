@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import joblib
 import pandas as pd
 
 from src.agents.safe_agent import apply_safe_agent
 from src.backtesting.metrics import evaluate_predictions
 from src.models.common import MODELS_DIR, PROCESSED_DIR, load_ai_race_entries
+from src.models.train_all import TRAINING_FRAME_CACHE
 from src.models.predict import _add_value_columns, _predict_with_artifact
 from src.models.train_place_model import train_lightgbm_place
 from src.validation.model_compare import _summary_row
@@ -30,7 +32,12 @@ ABLATIONS = {
 
 
 def run_ablation(output_path: Path | None = None) -> pd.DataFrame:
-    raw = load_ai_race_entries()
+    if TRAINING_FRAME_CACHE.exists():
+        raw = joblib.load(TRAINING_FRAME_CACHE)
+        raw.attrs["prepared_model_frame"] = True
+        logger.info("Using cached prepared frame for ablations: %s", TRAINING_FRAME_CACHE)
+    else:
+        raw = load_ai_race_entries()
     rows: list[dict] = []
     for name, groups in ABLATIONS.items():
         # Ablations are experiments: never overwrite the production artifact.
@@ -67,10 +74,10 @@ def run_ablation(output_path: Path | None = None) -> pd.DataFrame:
 
 
 def artifact_test_frame(raw: pd.DataFrame, groups: list[str]) -> pd.DataFrame:
-    from src.models.common import load_config, prepare_model_frame, split_by_time
+    from src.models.common import load_config, prepare_model_frame_if_needed, split_by_time
 
     config = load_config()
-    data = prepare_model_frame(raw, groups)
+    data = prepare_model_frame_if_needed(raw, groups)
     return split_by_time(data, config["modeling"]["valid_size"], config["modeling"]["test_size"]).test.copy()
 
 

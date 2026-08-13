@@ -193,8 +193,14 @@ def prepare_model_frame_if_needed(
     excluded_feature_groups: list[str] | None = None,
 ) -> pd.DataFrame:
     """Reuse a cached prepared frame without recalculating historical values."""
-    if frame.attrs.get("prepared_model_frame") and not excluded_feature_groups:
-        return frame
+    if frame.attrs.get("prepared_model_frame"):
+        # Ablations only alter the downstream feature specification. Historical
+        # aggregates have already been computed leakage-safely, so rebuilding
+        # them is unnecessary and makes full-history evaluation impractical.
+        reused = frame.copy()
+        reused.attrs["prepared_model_frame"] = True
+        reused.attrs["excluded_feature_groups"] = list(excluded_feature_groups or [])
+        return reused
     return prepare_model_frame(frame, excluded_feature_groups)
 
 
