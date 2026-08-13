@@ -55,6 +55,13 @@ CK は各レース時点の馬の中央実績・賞金を追加する特徴量�
 `normalize-jv-training` はJV-Linkの坂路（HC）・ウッドチップ（WC）調教を正規化します。調教日が
 対象レース日より前の記録だけを特徴量化します。
 
+全履歴のレース別集計は時間がかかるため、必要に応じて年単位で再開可能です。各実行はUPSERTなので、
+途中で止まっても同じ年を再実行できます。
+
+```bash
+uv run python main.py build-jv-training-features --from-date 2016-01-01 --to-date 2017-01-01
+```
+
 ## Phase 2の学習と予測
 
 Train all place models and build ensemble predictions:

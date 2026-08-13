@@ -68,6 +68,9 @@ def build_parser() -> argparse.ArgumentParser:
             command_parser.add_argument("--today-csv", required=True, help="Unconfirmed race entry CSV")
         if name == "train-all-models":
             command_parser.add_argument("--use-prepared-frame", action="store_true", help="Reuse data/processed/training_frame.joblib")
+        if name == "build-jv-training-features":
+            command_parser.add_argument("--from-date", default="2003-01-01", help="Inclusive YYYY-MM-DD; use yearly batches for long histories")
+            command_parser.add_argument("--to-date", help="Exclusive YYYY-MM-DD")
     return parser
 
 
@@ -111,7 +114,7 @@ def main() -> None:
     elif args.command == "build-jv-training-features":
         from src.pipelines.normalize_jv_snapshots import build_race_training_features
 
-        build_race_training_features()
+        build_race_training_features(args.from_date, args.to_date)
     elif args.command == "prepare-training-frame":
         from src.models.train_all import prepare_training_frame
 

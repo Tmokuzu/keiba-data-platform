@@ -109,8 +109,8 @@ def normalize_training_sessions() -> None:
     logger.info("Normalized HC/WC training sessions.")
 
 
-def build_race_training_features() -> None:
-    """Build conservative as-of training features for each historical starter."""
+def build_race_training_features(start_date: str = "2003-01-01", end_date: str | None = None) -> None:
+    """Build conservative as-of training features for a resumable date range."""
     sql = """
     INSERT INTO jv_race_training_features (
         race_id, horse_id, sessions_7d, sessions_14d, days_since_latest,
@@ -147,7 +147,10 @@ def build_race_training_features() -> None:
         ORDER BY t.training_date DESC, t.created_date DESC
         LIMIT 1
     ) latest ON TRUE
-    WHERE r.race_date > DATE '2023-08-01'
+    -- HC is available from 2003. WC is naturally absent before its 2021
+    -- release, but HC-only features remain valid for older races.
+    WHERE r.race_date >= CAST(:start_date AS date)
+      AND (:end_date IS NULL OR r.race_date < CAST(:end_date AS date))
     ON CONFLICT (race_id, horse_id) DO UPDATE SET
         sessions_7d = EXCLUDED.sessions_7d,
         sessions_14d = EXCLUDED.sessions_14d,
@@ -160,5 +163,5 @@ def build_race_training_features() -> None:
         updated_at = CURRENT_TIMESTAMP
     """
     with get_engine().begin() as connection:
-        connection.execute(text(sql))
-    logger.info("Built conservative as-of race training features.")
+        connection.execute(text(sql), {"start_date": start_date, "end_date": end_date})
+    logger.info("Built conservative as-of race training features from %s to %s.", start_date, end_date or "latest")
