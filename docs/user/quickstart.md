@@ -62,6 +62,15 @@ CK は各レース時点の馬の中央実績・賞金を追加する特徴量�
 uv run python main.py build-jv-training-features --from-date 2016-01-01 --to-date 2017-01-01
 ```
 
+2016年から最新年までを月単位で一括構築する場合は、WSL/Linuxで次を実行します。
+
+```bash
+bash scripts/build-training-feature-history.sh
+```
+
+途中で失敗した場合は、失敗した月だけ `build-jv-training-features --from-date ... --to-date ...` を
+再実行してください。完了済み月を再実行しても安全です。
+
 ## Phase 2の学習と予測
 
 Train all place models and build ensemble predictions:
